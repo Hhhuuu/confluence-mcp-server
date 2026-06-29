@@ -44,6 +44,15 @@ class VersionInfo(ConfluenceModel):
     number: int
 
 
+class LinksInfo(ConfluenceModel):
+    """Ссылки пагинации и вспомогательные URL из ответов Confluence."""
+
+    next: Optional[str] = None
+    self: Optional[str] = None
+    webui: Optional[str] = None
+    base: Optional[str] = None
+
+
 class PageSummary(ConfluenceModel):
     """Краткая информация о странице Confluence."""
 
@@ -61,6 +70,9 @@ class PagesResponse(ConfluenceModel):
 
     results: List[PageSummary] = Field(default_factory=list)
     size: Optional[int] = None
+    start: Optional[int] = None
+    limit: Optional[int] = None
+    links: Optional[LinksInfo] = Field(default=None, alias="_links")
 
 
 class CurrentUserResponse(ConfluenceModel):
@@ -96,6 +108,35 @@ class ConfluencePageResponse(ConfluenceModel):
 
     id: str
     title: str
+
+
+class AttachmentExtensions(ConfluenceModel):
+    """Дополнительные поля вложения Confluence."""
+
+    media_type: Optional[str] = Field(default=None, alias="mediaType")
+    file_size: Optional[int] = Field(default=None, alias="fileSize")
+
+
+class AttachmentSummary(ConfluenceModel):
+    """Краткая информация о вложении страницы."""
+
+    id: str
+    title: str
+    type: Optional[str] = None
+    status: Optional[str] = None
+    version: Optional[VersionInfo] = None
+    extensions: Optional[AttachmentExtensions] = None
+    links: Optional[LinksInfo] = Field(default=None, alias="_links")
+
+
+class AttachmentsResponse(ConfluenceModel):
+    """Ответ API со списком вложений страницы."""
+
+    results: List[AttachmentSummary] = Field(default_factory=list)
+    size: Optional[int] = None
+    start: Optional[int] = None
+    limit: Optional[int] = None
+    links: Optional[LinksInfo] = Field(default=None, alias="_links")
 
 
 class PageData(ConfluenceModel):

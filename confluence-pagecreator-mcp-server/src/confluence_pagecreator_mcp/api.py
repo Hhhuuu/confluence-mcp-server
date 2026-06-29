@@ -10,6 +10,7 @@ from confluence_markdown_service import (
     ConfluenceMarkdownImporter,
     MarkdownBridgeError,
     export_page_to_markdown_file,
+    export_page_tree_to_markdown_files,
 )
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -135,6 +136,12 @@ class MarkdownFileExportRequest(BaseModel):
     """Входные данные для выгрузки страницы в markdown-файл."""
 
     output_path: str
+
+
+class MarkdownTreeExportRequest(BaseModel):
+    """Входные данные для выгрузки дерева страниц в markdown-файлы."""
+
+    output_dir: str
 
 
 @app.get("/health")
@@ -380,6 +387,31 @@ def export_page_markdown_to_file(page_id: str, payload: MarkdownFileExportReques
                 client=client,
                 page_id=page_id,
                 output_path=payload.output_path,
+            )
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except MarkdownBridgeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return result.model_dump(mode="json")
+
+
+@app.post("/api/v1/page/{page_id}/markdown/tree")
+def export_page_tree_markdown_to_files(page_id: str, payload: MarkdownTreeExportRequest) -> dict:
+    """
+    Выгрузить страницу и все дочерние страницы в набор markdown-файлов.
+    """
+
+    try:
+        with _load_client() as client:
+            result = export_page_tree_to_markdown_files(
+                client=client,
+                root_page_id=page_id,
+                output_dir=payload.output_dir,
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

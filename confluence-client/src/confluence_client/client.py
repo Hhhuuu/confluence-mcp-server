@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import mimetypes
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import httpx
@@ -13,6 +15,8 @@ from .exceptions import (
 )
 from .models import (
     AncestorRef,
+    AttachmentSummary,
+    AttachmentsResponse,
     BodyValue,
     ConfluencePageResponse,
     CreatePageRequest,
@@ -32,6 +36,8 @@ _REST_API = "/rest/api/content"
 _CURRENT_USER_API = "/rest/api/user/current"
 _SPACE_API = "/rest/api/space"
 _VIEW_PAGE_PATH = "/wiki/pages/viewpage.action?pageId="
+_ATTACHMENT_API_SUFFIX = "/child/attachment"
+_CHILD_PAGE_API_SUFFIX = "/child/page"
 
 
 @dataclass(frozen=True)
@@ -199,6 +205,177 @@ class ConfluenceClient:
             params={"expand": "body.storage,version,space"},
         )
         return PageSummary.model_validate(response.json())
+
+    def list_child_pages(
+        self,
+        page_id: str,
+        *,
+        include_storage: bool = False,
+        start: int = 0,
+        limit: int = 100,
+    ) -> PagesResponse:
+        """
+        Получить дочерние страницы для указанной страницы.
+
+        Args:
+            page_id: Идентификатор родительской страницы.
+            include_storage: Нужно ли раскрывать `body.storage`.
+            start: Смещение пагинации.
+            limit: Максимум записей в одном запросе.
+
+        Returns:
+            Страница результатов Confluence со списком дочерних страниц.
+        """
+
+        expand_parts = ["version", "space"]
+        if include_storage:
+            expand_parts.insert(0, "body.storage")
+
+        response = self._request(
+            "GET",
+            self._api_path(f"{_REST_API}/{page_id}{_CHILD_PAGE_API_SUFFIX}"),
+            params={
+                "expand": ",".join(expand_parts),
+                "start": str(start),
+                "limit": str(limit),
+            },
+        )
+        return PagesResponse.model_validate(response.json())
+
+    def find_attachment_by_filename(
+        self,
+        page_id: str,
+        filename: str,
+    ) -> Optional[AttachmentSummary]:
+        """
+        Найти вложение страницы по имени файла.
+
+        Args:
+            page_id: Идентификатор страницы.
+            filename: Имя файла вложения.
+
+        Returns:
+            Первое найденное вложение или `None`.
+        """
+
+        response = self._request(
+            "GET",
+            self._api_path(f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}"),
+            params={"filename": filename, "expand": "version"},
+        )
+        payload = AttachmentsResponse.model_validate(response.json())
+        return payload.results[0] if payload.results else None
+
+    def upload_attachment(
+        self,
+        page_id: str,
+        file_path: str | Path,
+        *,
+        comment: Optional[str] = None,
+    ) -> AttachmentSummary:
+        """
+        Загрузить новое вложение на страницу Confluence.
+
+        Args:
+            page_id: Идентификатор страницы.
+            file_path: Путь до файла на локальном диске.
+            comment: Необязательный комментарий к вложению.
+
+        Returns:
+            Краткие данные загруженного вложения.
+        """
+
+        path = Path(file_path).expanduser()
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        data: Dict[str, str] = {"minorEdit": "true"}
+        if comment:
+            data["comment"] = comment
+
+        with path.open("rb") as stream:
+            response = self._request(
+                "POST",
+                self._api_path(f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}"),
+                headers={"X-Atlassian-Token": "nocheck"},
+                files={"file": (path.name, stream, content_type)},
+                data=data,
+            )
+
+        payload = AttachmentsResponse.model_validate(response.json())
+        if not payload.results:
+            raise ConfluenceRequestError(
+                f"Confluence не вернул данных о загруженном вложении {path.name}."
+            )
+        return payload.results[0]
+
+    def update_attachment(
+        self,
+        page_id: str,
+        attachment_id: str,
+        file_path: str | Path,
+        *,
+        comment: Optional[str] = None,
+    ) -> AttachmentSummary:
+        """
+        Обновить бинарные данные уже существующего вложения.
+
+        Args:
+            page_id: Идентификатор страницы.
+            attachment_id: Идентификатор вложения.
+            file_path: Путь до нового файла.
+            comment: Необязательный комментарий к новой версии вложения.
+
+        Returns:
+            Краткие данные обновленного вложения.
+        """
+
+        path = Path(file_path).expanduser()
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        data: Dict[str, str] = {"minorEdit": "true"}
+        if comment:
+            data["comment"] = comment
+
+        with path.open("rb") as stream:
+            response = self._request(
+                "POST",
+                self._api_path(
+                    f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}/{attachment_id}/data"
+                ),
+                headers={"X-Atlassian-Token": "nocheck"},
+                files={"file": (path.name, stream, content_type)},
+                data=data,
+            )
+
+        payload = AttachmentsResponse.model_validate(response.json())
+        if not payload.results:
+            raise ConfluenceRequestError(
+                f"Confluence не вернул данных об обновленном вложении {path.name}."
+            )
+        return payload.results[0]
+
+    def upsert_attachment(
+        self,
+        page_id: str,
+        file_path: str | Path,
+        *,
+        comment: Optional[str] = None,
+    ) -> tuple[str, AttachmentSummary]:
+        """
+        Создать вложение или обновить его, если файл с таким именем уже существует.
+
+        Args:
+            page_id: Идентификатор страницы.
+            file_path: Путь до файла на диске.
+            comment: Необязательный комментарий к вложению.
+
+        Returns:
+            Кортеж из действия (`created` или `updated`) и данных вложения.
+        """
+
+        path = Path(file_path).expanduser()
+        existing = self.find_attachment_by_filename(page_id, path.name)
+        if existing is None:
+            return "created", self.upload_attachment(page_id, path, comment=comment)
+        return "updated", self.update_attachment(page_id, existing.id, path, comment=comment)
 
     def create_child_page(
         self,

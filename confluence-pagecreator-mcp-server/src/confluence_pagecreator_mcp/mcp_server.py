@@ -9,6 +9,7 @@ from confluence_markdown_service import (
     ConfluenceMarkdownExporter,
     ConfluenceMarkdownImporter,
     export_page_to_markdown_file,
+    export_page_tree_to_markdown_files,
 )
 from mcp.server.fastmcp import FastMCP
 from confluence_pagecreator_service import CreatePagesRequest
@@ -179,6 +180,23 @@ def export_page_to_markdown_file_tool(page_id: str, output_path: str) -> dict:
             client=client,
             page_id=page_id,
             output_path=output_path,
+        )
+        return result.model_dump(mode="json")
+    finally:
+        client.close()
+
+
+@mcp.tool(
+    name="export_page_tree_to_markdown_files",
+    description="Выгрузить страницу и все её дочерние страницы в дерево локальных Markdown-файлов.",
+)
+def export_page_tree_to_markdown_files_tool(page_id: str, output_dir: str) -> dict:
+    client, _ = load_runtime_client()
+    try:
+        result = export_page_tree_to_markdown_files(
+            client=client,
+            root_page_id=page_id,
+            output_dir=output_dir,
         )
         return result.model_dump(mode="json")
     finally:

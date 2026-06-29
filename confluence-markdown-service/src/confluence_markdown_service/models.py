@@ -7,6 +7,61 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class MarkdownAttachmentResult(BaseModel):
+    """
+    Информация о локальном файле, который был загружен во вложения страницы.
+
+    Attributes:
+        filename: Имя вложения в Confluence.
+        source_path: Локальный путь до исходного файла.
+        attachment_id: Идентификатор вложения в Confluence.
+        action: `created`, если вложение создано, или `updated`, если обновлено.
+    """
+
+    filename: str
+    source_path: str
+    attachment_id: Optional[str] = None
+    action: str
+
+
+class MarkdownTreeExportItem(BaseModel):
+    """
+    Информация об одной выгруженной странице дерева.
+
+    Attributes:
+        page_id: Идентификатор страницы Confluence.
+        title: Заголовок страницы.
+        depth: Глубина относительно корня.
+        output_path: Путь до созданного Markdown-файла.
+        warnings: Предупреждения конкретно для этой страницы.
+    """
+
+    page_id: str
+    title: str
+    depth: int
+    output_path: str
+    warnings: List[str] = Field(default_factory=list)
+
+
+class MarkdownTreeExportResult(BaseModel):
+    """
+    Результат выгрузки дерева страниц в набор Markdown-файлов.
+
+    Attributes:
+        root_page_id: Идентификатор корневой страницы.
+        root_title: Заголовок корневой страницы.
+        output_dir: Базовая директория выгрузки.
+        items: Список выгруженных страниц.
+        warnings: Общие предупреждения по всей операции.
+    """
+
+    root_page_id: str
+    root_title: str
+    output_dir: str
+    items: List[MarkdownTreeExportItem] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class MarkdownExportResult(BaseModel):
     """
     Результат экспорта страницы Confluence в Markdown.
@@ -59,4 +114,5 @@ class MarkdownPublishResult(BaseModel):
     page_id: str
     page_url: str
     source_path: Optional[str] = None
+    attachments: List[MarkdownAttachmentResult] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)

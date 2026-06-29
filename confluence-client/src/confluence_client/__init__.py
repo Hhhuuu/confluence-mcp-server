@@ -6,7 +6,15 @@ from .exceptions import (
     ConfluenceClientError,
     ConfluenceRequestError,
 )
-from .models import PageData, PageSummary, PagesResponse, SpaceDetails, UserInfo
+from .models import (
+    AttachmentSummary,
+    AttachmentsResponse,
+    PageData,
+    PageSummary,
+    PagesResponse,
+    SpaceDetails,
+    UserInfo,
+)
 
 __all__ = [
     "ConfluenceAuthenticationError",
@@ -14,6 +22,8 @@ __all__ = [
     "ConfluenceClientConfig",
     "ConfluenceClientError",
     "ConfluenceRequestError",
+    "AttachmentSummary",
+    "AttachmentsResponse",
     "PageData",
     "PageSummary",
     "PagesResponse",
