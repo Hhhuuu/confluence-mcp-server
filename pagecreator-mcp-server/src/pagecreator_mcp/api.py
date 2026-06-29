@@ -10,8 +10,12 @@ from pydantic import BaseModel, Field
 
 from pagecreator_core import build_creation_plan, parse_paths, render_plan_structure
 from pagecreator_service import (
+    ConfigFileNotFoundError,
     CreatePagesRequest,
+    InvalidConfigError,
+    InvalidSecretsError,
     PageCreatorService,
+    SecretsFileNotFoundError,
     load_app_config,
 )
 
@@ -139,8 +143,10 @@ def create(payload: CreateRequest) -> dict:
             ),
             default_space_key=default_space_key,
         )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=f"Не найден файл конфигурации: {exc}") from exc
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -158,7 +164,12 @@ def show_config() -> Dict[str, Union[str, None, bool]]:
 
     config_path = resolve_config_path()
     secrets_path = resolve_secrets_path()
-    config = load_app_config(config_path)
+    try:
+        config = load_app_config(config_path)
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {
         "config_path": str(config_path),
         "secrets_path": str(secrets_path),
@@ -180,8 +191,10 @@ def client_me() -> dict:
     try:
         with _load_client() as client:
             user = client.current_user()
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=f"Не найден файл конфигурации: {exc}") from exc
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -203,8 +216,10 @@ def client_space(space_key: str) -> dict:
     try:
         with _load_client() as client:
             space = client.get_space(space_key)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=f"Не найден файл конфигурации: {exc}") from exc
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -224,7 +239,12 @@ def client_page_search(title: str, space_key: Optional[str] = None) -> dict:
         Список найденных страниц.
     """
 
-    config = load_app_config(resolve_config_path())
+    try:
+        config = load_app_config(resolve_config_path())
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     effective_space_key = space_key or config.confluence.default_space_key
     if not effective_space_key:
         raise HTTPException(status_code=400, detail="Не указан space_key и в конфиге нет значения по умолчанию.")
@@ -232,8 +252,10 @@ def client_page_search(title: str, space_key: Optional[str] = None) -> dict:
     try:
         with _load_client() as client:
             pages = client.find_page(title=title, space_key=effective_space_key)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=f"Не найден файл конфигурации: {exc}") from exc
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

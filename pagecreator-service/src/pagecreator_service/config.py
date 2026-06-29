@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+from .exceptions import ConfigFileNotFoundError, InvalidConfigError
 
 
 class ConfluenceAppConfig(BaseModel):
@@ -47,10 +49,53 @@ def load_app_config(config_path: str | Path) -> AppConfig:
         Объект `AppConfig`.
     """
 
-    data = _read_yaml(config_path)
-    return AppConfig.model_validate(data)
+    path = Path(config_path).expanduser()
+    if not path.exists():
+        raise ConfigFileNotFoundError(path)
+    if not path.is_file():
+        raise InvalidConfigError(f"Путь конфигурации не является файлом: {path}.")
+
+    data = _read_yaml(path)
+    try:
+        config = AppConfig.model_validate(data)
+    except ValidationError as exc:
+        raise InvalidConfigError(
+            f"Некорректный формат config/app.yaml: {_format_validation_error(exc)}"
+        ) from exc
+
+    deployment = config.confluence.deployment.strip().lower()
+    if deployment not in {"cloud", "server"}:
+        raise InvalidConfigError(
+            "Поле confluence.deployment должно быть равно 'cloud' или 'server'."
+        )
+    config.confluence.deployment = deployment
+    return config
 
 
 def _read_yaml(config_path: str | Path) -> dict[str, Any]:
     with Path(config_path).expanduser().open("r", encoding="utf-8") as stream:
-        return yaml.safe_load(stream) or {}
+        data = yaml.safe_load(stream)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise InvalidConfigError("Файл config/app.yaml должен содержать YAML-объект верхнего уровня.")
+    return data
+
+
+def _format_validation_error(error: ValidationError) -> str:
+    messages: list[str] = []
+    for item in error.errors():
+        location = ".".join(str(part) for part in item.get("loc", ()))
+        error_type = item.get("type", "")
+
+        if error_type == "missing" and location:
+            messages.append(f"отсутствует обязательное поле {location}")
+            continue
+
+        detail = item.get("msg", "неизвестная ошибка валидации")
+        if location:
+            messages.append(f"{location}: {detail}")
+        else:
+            messages.append(detail)
+
+    return "; ".join(messages)
