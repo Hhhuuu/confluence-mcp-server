@@ -4,10 +4,10 @@
 
 В архив рекомендуется включать:
 
-- `pagecreator-core/`
+- `confluence-pagecreator-core/`
 - `confluence-client/`
-- `pagecreator-service/`
-- `pagecreator-mcp-server/`
+- `confluence-pagecreator-service/`
+- `confluence-pagecreator-mcp-server/`
 - `config/app.yaml.example`
 - `secrets/confluence.yaml.example`
 - `skills/`
@@ -33,10 +33,10 @@
 
 ```text
 confluence-mcp-server/
-  pagecreator-core/
+  confluence-pagecreator-core/
   confluence-client/
-  pagecreator-service/
-  pagecreator-mcp-server/
+  confluence-pagecreator-service/
+  confluence-pagecreator-mcp-server/
   config/
     app.yaml.example
   secrets/
@@ -125,16 +125,16 @@ python -m pip install --upgrade pip setuptools wheel
 ### Шаг 2. Установить пакеты
 
 ```bash
-pip install -e pagecreator-core
+pip install -e confluence-pagecreator-core
 pip install -e confluence-client
-pip install -e pagecreator-service
-pip install -e pagecreator-mcp-server
+pip install -e confluence-pagecreator-service
+pip install -e confluence-pagecreator-mcp-server
 ```
 
 ### Шаг 3. Запустить локальный API
 
 ```bash
-uvicorn pagecreator_mcp.api:app --app-dir pagecreator-mcp-server/src --host 127.0.0.1 --port 8000
+uvicorn confluence_pagecreator_mcp.api:app --app-dir confluence-pagecreator-mcp-server/src --host 127.0.0.1 --port 8000
 ```
 
 ### Шаг 4. Проверить, что API жив
@@ -162,16 +162,16 @@ python -m pip install --upgrade pip setuptools wheel
 ### Шаг 2. Установить пакеты
 
 ```bash
-pip install -e pagecreator-core
+pip install -e confluence-pagecreator-core
 pip install -e confluence-client
-pip install -e pagecreator-service
-pip install -e pagecreator-mcp-server
+pip install -e confluence-pagecreator-service
+pip install -e confluence-pagecreator-mcp-server
 ```
 
 ### Шаг 3. Запуск stdio MCP
 
 ```bash
-.venv-mcp/bin/python -m pagecreator_mcp
+.venv-mcp/bin/python -m confluence_pagecreator_mcp
 ```
 
 ### Шаг 4. Проверка `.mcp.json`
@@ -183,7 +183,7 @@ pip install -e pagecreator-mcp-server
   "mcpServers": {
     "confluence-mcp": {
       "command": ".venv-mcp/bin/python",
-      "args": ["-m", "pagecreator_mcp"],
+      "args": ["-m", "confluence_pagecreator_mcp"],
       "env": {
         "PAGECREATOR_CONFIG_PATH": "config/app.yaml",
         "PAGECREATOR_SECRETS_PATH": "secrets/confluence.yaml"
@@ -255,7 +255,7 @@ docker run --rm -i \
 
 - что используется Python `3.10+`
 - что `.venv-mcp` существует
-- что `pagecreator-mcp-server` установлен
+- что `confluence-pagecreator-mcp-server` установлен
 
 ### Не работает авторизация
 
