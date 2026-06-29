@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+.venv-mcp/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs and temp files
+*.log
+tmp/
+
+# Local archives
+*.zip
+*.tar
+*.tar.gz
+
+# Secrets
+secrets/confluence.yaml
+secrets/*.local.yaml
+
+# Optional local overrides
+config/app.yaml
+

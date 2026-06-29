@@ -1,0 +1,24 @@
+# Базовая конфигурация подключения к Confluence.
+# Этот файл описывает, куда подключаться и какой режим API использовать.
+
+confluence:
+  # Базовый URL Confluence.
+  # Для Cloud: https://your-domain.atlassian.net
+  # Для Server/Data Center: https://confluence.example.local
+  base_url: "https://your-domain.atlassian.net"
+
+  # Тип развертывания:
+  # - cloud  -> клиент автоматически использует пути /wiki/rest/api/...
+  # - server -> клиент использует пути /rest/api/...
+  deployment: "cloud"
+
+  # Проверять ли SSL-сертификат сервера.
+  # Для production обычно должно быть true.
+  # Для внутренних стендов с проблемным сертификатом можно временно поставить false.
+  verify_ssl: true
+
+  # Пространство по умолчанию.
+  # Используется, если tool вызван без явного space_key.
+  # Для Cloud personal space часто выглядит как ~accountId-like-value.
+  # Для Server обычно это короткий ключ вида DOC, TEAM, DEV.
+  default_space_key: "~your-space-key"

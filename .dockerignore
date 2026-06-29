@@ -1,0 +1,14 @@
+.venv
+.venv-mcp
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+.git
+.gitignore
+state_5.sqlite
+logs_2.sqlite
+tmp/
+.codex/
+secrets/confluence.yaml
