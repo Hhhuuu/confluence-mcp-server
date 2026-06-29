@@ -134,7 +134,7 @@ Authorization: Bearer <token>
 Команда запуска для stdio-режима:
 
 ```bash
-.venv-mcp/bin/python -m confluence_mcp
+./scripts/run_mcp.sh
 ```
 
 Для локального HTTP-запуска MCP-сервера:

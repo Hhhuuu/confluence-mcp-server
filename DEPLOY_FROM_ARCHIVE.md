@@ -171,7 +171,7 @@ pip install -e confluence-mcp-server
 ### Шаг 3. Запуск stdio MCP
 
 ```bash
-.venv-mcp/bin/python -m confluence_mcp
+./scripts/run_mcp.sh
 ```
 
 ### Шаг 4. Проверка `.mcp.json`
@@ -182,12 +182,7 @@ pip install -e confluence-mcp-server
 {
   "mcpServers": {
     "confluence-mcp": {
-      "command": ".venv-mcp/bin/python",
-      "args": ["-m", "confluence_mcp"],
-      "env": {
-        "PAGECREATOR_CONFIG_PATH": "config/app.yaml",
-        "PAGECREATOR_SECRETS_PATH": "secrets/confluence.yaml"
-      }
+      "command": "./scripts/run_mcp.sh"
     }
   }
 }
