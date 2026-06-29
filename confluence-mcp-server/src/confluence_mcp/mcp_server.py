@@ -1,4 +1,4 @@
-"""Реализация MCP-сервера для PageCreator."""
+"""Реализация общего MCP-сервера для сценариев работы с Confluence."""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from .runtime import (
 mcp = FastMCP(
     name="confluence-mcp",
     instructions=(
-        "Инструменты для планирования и создания иерархии страниц в Confluence Cloud, "
-        "а также для отладки доступа к пространствам и страницам."
+        "Инструменты для создания структуры страниц, экспорта и импорта Markdown, "
+        "а также для отладки доступа к пространствам и страницам Confluence."
     ),
     host=os.getenv("PAGECREATOR_MCP_HOST", "127.0.0.1"),
     port=int(os.getenv("PAGECREATOR_MCP_PORT", "8000")),

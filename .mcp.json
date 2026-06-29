@@ -4,7 +4,7 @@
       "command": ".venv-mcp/bin/python",
       "args": [
         "-m",
-        "confluence_pagecreator_mcp"
+        "confluence_mcp"
       ],
       "env": {
         "PAGECREATOR_CONFIG_PATH": "config/app.yaml",

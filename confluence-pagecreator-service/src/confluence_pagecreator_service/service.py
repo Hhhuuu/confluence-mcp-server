@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from confluence_client import ConfluenceClient, ConfluenceClientConfig, PageData
-from confluence_pagecreator_core import build_creation_plan, parse_paths, render_plan_structure
 
 from .config import AppConfig
 from .dto import CreatePagesRequest, CreatePagesResult, PlannedPage
 from .interfaces import ConfluenceGateway
+from .path_parser import parse_paths
+from .planner import build_creation_plan, render_plan_structure
 from .secrets import ConfluenceSecrets
 
 
@@ -17,7 +18,7 @@ class PageCreatorService:
     """
     Сервис сценария создания страниц.
 
-    Класс связывает доменную логику из `confluence-pagecreator-core` и
+    Класс объединяет доменную логику page creator и
     REST-клиент из `confluence-client`.
     """
 

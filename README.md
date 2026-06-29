@@ -10,18 +10,17 @@
 
 ## Структура
 
-- `confluence-pagecreator-core` — чистая бизнес-логика
+- `confluence-pagecreator-service` — сервис page creator, включая разбор путей и построение плана
 - `confluence-client` — клиент для Confluence REST API
-- `confluence-pagecreator-service` — сервисный слой
 - `confluence-markdown-service` — сервис экспорта и импорта Markdown
-- `confluence-pagecreator-mcp-server` — транспортный слой MCP
+- `confluence-mcp-server` — общий HTTP- и MCP-транспорт для page creator и markdown-сценариев
 
 ## Локальная разработка
 
 Для локальной разработки используем editable installs:
 
 ```bash
-cd confluence-pagecreator-mcp-server
+cd confluence-mcp-server
 pip install -r requirements-dev.txt
 ```
 
@@ -30,7 +29,7 @@ pip install -r requirements-dev.txt
 Можно поднять простой HTTP API и проверять логику через `curl` или Postman:
 
 ```bash
-cd confluence-pagecreator-mcp-server
+cd confluence-mcp-server
 uvicorn run_api:app --reload
 ```
 
@@ -135,7 +134,7 @@ Authorization: Bearer <token>
 Команда запуска для stdio-режима:
 
 ```bash
-.venv-mcp/bin/python -m confluence_pagecreator_mcp
+.venv-mcp/bin/python -m confluence_mcp
 ```
 
 Для локального HTTP-запуска MCP-сервера:
@@ -143,7 +142,7 @@ Authorization: Bearer <token>
 ```bash
 cd confluence-mcp-server
 source .venv-mcp/bin/activate
-python confluence-pagecreator-mcp-server/run_mcp_http.py
+python run_mcp_http.py
 ```
 
 ## Docker
@@ -203,7 +202,7 @@ docker run --rm -i \
 
 ## Порядок работ
 
-1. Переносим `confluence-pagecreator-core`
+1. Переносим `confluence-pagecreator-service`
 2. Затем `confluence-client`
-3. Затем `confluence-pagecreator-service`
-4. После этого собираем `confluence-pagecreator-mcp-server`
+3. Затем `confluence-markdown-service`
+4. После этого собираем `confluence-mcp-server`

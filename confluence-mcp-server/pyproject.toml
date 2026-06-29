@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "confluence-pagecreator-mcp-server"
+name = "confluence-mcp-server"
 version = "0.1.0"
-description = "MCP-сервер для создания страниц"
+description = "Общий MCP- и HTTP-сервер для сценариев работы с Confluence"
 requires-python = ">=3.10"
 dependencies = [
     "confluence-pagecreator-service",

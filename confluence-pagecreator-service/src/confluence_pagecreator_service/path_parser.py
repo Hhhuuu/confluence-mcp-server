@@ -18,16 +18,6 @@ def parse_path(raw_path: str) -> ParsedPath:
     Метод сохраняет текущее legacy-поведение Java-реализации:
     одинарный `/` разделяет уровни, а двойной `//` трактуется
     как обычный символ `/` внутри названия страницы.
-
-    Args:
-        raw_path: Исходный путь, например `Root/Child/Page`.
-
-    Returns:
-        Нормализованный объект `ParsedPath`.
-
-    Raises:
-        InvalidPathError: Если путь пустой или содержит пустые сегменты.
-        DuplicateTitleError: Если в одном пути встречаются одинаковые названия.
     """
 
     if raw_path is None or not raw_path.strip():
@@ -57,20 +47,6 @@ def parse_path(raw_path: str) -> ParsedPath:
 def parse_paths(raw_paths: Iterable[str]) -> list[ParsedPath]:
     """
     Разобрать несколько путей и вернуть список нормализованных структур.
-
-    Пустые элементы входной последовательности пропускаются.
-    Если после фильтрации не остается ни одного пути, метод
-    завершится ошибкой.
-
-    Args:
-        raw_paths: Набор строковых путей.
-
-    Returns:
-        Список объектов `ParsedPath` в исходном порядке.
-
-    Raises:
-        InvalidPathError: Если после фильтрации не осталось ни одного пути.
-        DuplicateTitleError: Если в одном из путей есть повторяющиеся названия.
     """
 
     parsed_paths: list[ParsedPath] = []

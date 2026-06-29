@@ -175,7 +175,7 @@ confluence:
 Базовая команда запуска:
 
 ```bash
-.venv-mcp/bin/python -m confluence_pagecreator_mcp
+.venv-mcp/bin/python -m confluence_mcp
 ```
 
 Если MCP-клиент поддерживает запуск через `command + args`, можно использовать такую конфигурацию:
@@ -185,7 +185,7 @@ confluence:
   "mcpServers": {
     "confluence-mcp": {
       "command": ".venv-mcp/bin/python",
-      "args": ["-m", "confluence_pagecreator_mcp"],
+      "args": ["-m", "confluence_mcp"],
       "env": {
         "PAGECREATOR_CONFIG_PATH": "config/app.yaml",
         "PAGECREATOR_SECRETS_PATH": "secrets/confluence.yaml"

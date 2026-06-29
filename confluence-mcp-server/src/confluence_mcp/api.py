@@ -1,4 +1,4 @@
-"""Локальный HTTP API для ручной проверки page creator."""
+"""Локальный HTTP API для ручной проверки сценариев работы с Confluence."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from confluence_markdown_service import (
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from confluence_pagecreator_core import build_creation_plan, parse_paths, render_plan_structure
+from confluence_pagecreator_service import build_creation_plan, parse_paths, render_plan_structure
 from confluence_pagecreator_service import (
     ConfigFileNotFoundError,
     CreatePagesRequest,
@@ -34,9 +34,9 @@ from .runtime import (
 )
 
 app = FastAPI(
-    title="PageCreator Preview API",
+    title="Confluence Preview API",
     version="0.1.0",
-    description="Локальный API для проверки логики планирования и создания страниц.",
+    description="Локальный API для проверки page creator и markdown-сценариев Confluence.",
 )
 
 

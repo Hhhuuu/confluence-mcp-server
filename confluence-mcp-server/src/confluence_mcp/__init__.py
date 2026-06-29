@@ -1,4 +1,4 @@
-"""Пакет MCP-сервера для создания страниц."""
+"""Пакет общего MCP-сервера для сценариев работы с Confluence."""
 
 from .api import app
 from .launch import main as launch_main

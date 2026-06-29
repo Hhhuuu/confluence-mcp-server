@@ -5,10 +5,10 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY confluence-pagecreator-core /app/confluence-pagecreator-core
-COPY confluence-client /app/confluence-client
 COPY confluence-pagecreator-service /app/confluence-pagecreator-service
-COPY confluence-pagecreator-mcp-server /app/confluence-pagecreator-mcp-server
+COPY confluence-client /app/confluence-client
+COPY confluence-markdown-service /app/confluence-markdown-service
+COPY confluence-mcp-server /app/confluence-mcp-server
 COPY config /app/config
 COPY secrets /app/secrets
 COPY .mcp.json /app/.mcp.json
@@ -17,10 +17,10 @@ COPY README.md /app/README.md
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir \
-        -e /app/confluence-pagecreator-core \
-        -e /app/confluence-client \
         -e /app/confluence-pagecreator-service \
-        -e /app/confluence-pagecreator-mcp-server
+        -e /app/confluence-client \
+        -e /app/confluence-markdown-service \
+        -e /app/confluence-mcp-server
 
 ENV PAGECREATOR_CONFIG_PATH=/app/config/app.yaml
 ENV PAGECREATOR_SECRETS_PATH=/app/secrets/confluence.yaml
@@ -32,4 +32,4 @@ ENV PAGECREATOR_MCP_PORT=8000
 
 EXPOSE 8000
 
-CMD ["python", "-m", "confluence_pagecreator_mcp.launch"]
+CMD ["python", "-m", "confluence_mcp.launch"]

@@ -1,4 +1,4 @@
-"""Каркас MCP-сервера для создания страниц."""
+"""Каркас сборки сервисов для HTTP- и MCP-слоёв Confluence."""
 
 from __future__ import annotations
 

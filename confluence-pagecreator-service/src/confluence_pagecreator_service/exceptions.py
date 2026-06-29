@@ -47,3 +47,20 @@ class InvalidConfigError(PageCreatorServiceError):
 
 class InvalidSecretsError(PageCreatorServiceError):
     """Ошибка некорректных секретов подключения."""
+
+
+class InvalidPathError(PageCreatorServiceError):
+    """
+    Ошибка пустого или некорректного пути страницы.
+
+    Используется при разборе путей для сценария создания структуры.
+    """
+
+
+class DuplicateTitleError(PageCreatorServiceError):
+    """
+    Ошибка повторяющегося названия страницы внутри одного пути.
+
+    Повтор названий внутри одного пути запрещен, чтобы план
+    создания страниц был однозначным.
+    """
