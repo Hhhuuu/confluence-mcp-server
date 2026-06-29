@@ -13,6 +13,7 @@
 - `pagecreator-core` — чистая бизнес-логика
 - `confluence-client` — клиент для Confluence REST API
 - `pagecreator-service` — сервисный слой
+- `confluence-markdown-service` — сервис экспорта и импорта Markdown
 - `pagecreator-mcp-server` — транспортный слой MCP
 
 ## Локальная разработка
@@ -39,6 +40,7 @@ uvicorn run_api:app --reload
 - `GET /api/v1/config` — показать активный конфиг
 - `POST /api/v1/plan` — построить план без записи в Confluence
 - `POST /api/v1/create` — создать страницы в Confluence
+- `GET /api/v1/page/{page_id}/markdown` — выгрузить страницу Confluence в Markdown
 
 Пример запроса для предварительного просмотра:
 

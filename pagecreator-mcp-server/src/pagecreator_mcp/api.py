@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import Dict, List, Optional, Tuple, Union
 
+from confluence_markdown_service import ConfluenceMarkdownExporter, MarkdownBridgeError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -260,6 +261,34 @@ def client_page_search(title: str, space_key: Optional[str] = None) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return pages.model_dump(mode="json")
+
+
+@app.get("/api/v1/page/{page_id}/markdown")
+def export_page_markdown(page_id: str) -> dict:
+    """
+    Выгрузить страницу Confluence в Markdown.
+
+    Args:
+        page_id: Идентификатор страницы Confluence.
+
+    Returns:
+        Заголовок страницы, markdown-представление и предупреждения о потерях.
+    """
+
+    try:
+        with _load_client() as client:
+            exporter = ConfluenceMarkdownExporter(client)
+            result = exporter.export_page_to_markdown(page_id)
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except MarkdownBridgeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return result.model_dump(mode="json")
 
 
 def _load_service() -> Tuple[PageCreatorService, Optional[str]]:

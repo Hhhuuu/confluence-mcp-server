@@ -76,16 +76,18 @@ Confluence хранит тело страницы не как обычный HTM
 Рекомендуемая структура внутри текущего проекта:
 
 ```text
-pagecreator-service/src/pagecreator_service/
-  markdown_bridge/
-    __init__.py
-    models.py
-    exporter.py
-    importer.py
-    storage_normalizer.py
-    storage_renderer.py
-    markdown_extensions.py
-    exceptions.py
+confluence-markdown-service/
+  pyproject.toml
+  src/
+    confluence_markdown_service/
+      __init__.py
+      models.py
+      exporter.py
+      importer.py
+      storage_normalizer.py
+      storage_renderer.py
+      markdown_extensions.py
+      exceptions.py
 ```
 
 ### Зоны ответственности

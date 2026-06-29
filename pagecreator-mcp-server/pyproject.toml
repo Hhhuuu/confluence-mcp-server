@@ -9,6 +9,7 @@ description = "MCP-сервер для создания страниц"
 requires-python = ">=3.10"
 dependencies = [
     "pagecreator-service",
+    "confluence-markdown-service",
     "pydantic>=2.7",
     "fastapi>=0.115",
     "uvicorn>=0.30",
