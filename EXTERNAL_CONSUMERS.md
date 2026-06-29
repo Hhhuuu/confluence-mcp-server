@@ -398,6 +398,30 @@ confluence:
 
 - когда нужен файл на диске, а не markdown-строка в ответе
 
+### `export_page_tree_to_markdown_files`
+
+Назначение:
+
+- выгрузить страницу и все её дочерние страницы в дерево локальных markdown-файлов
+
+Вход:
+
+- `page_id`
+- `output_dir`
+
+Выход:
+
+- `root_page_id`
+- `root_title`
+- `output_dir`
+- `items`
+- `warnings`
+
+Когда использовать:
+
+- когда нужно локально сохранить целую ветку Confluence
+- когда нужен файловый архив структуры страниц для последующей правки
+
 ### `preview_markdown_to_storage`
 
 Назначение:
@@ -482,11 +506,13 @@ confluence:
 - `page_id`
 - `page_url`
 - `source_path`
+- `attachments`
 - `warnings`
 
 Когда использовать:
 
 - когда markdown уже хранится в файле на диске
+- когда локальные изображения должны автоматически уйти во вложения страницы
 
 ### `update_page_from_markdown`
 
@@ -529,11 +555,13 @@ confluence:
 - `page_id`
 - `page_url`
 - `source_path`
+- `attachments`
 - `warnings`
 
 Когда использовать:
 
 - когда локальный markdown-файл является источником истины для страницы
+- когда нужно обновить и контент, и локальные картинки одним вызовом
 
 ## 8. Формат путей для `plan_pages` и `create_pages`
 
