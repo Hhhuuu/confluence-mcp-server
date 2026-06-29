@@ -16,7 +16,7 @@ from .runtime import (
 )
 
 mcp = FastMCP(
-    name="pagecreator",
+    name="confluence-mcp",
     instructions=(
         "Инструменты для планирования и создания иерархии страниц в Confluence Cloud, "
         "а также для отладки доступа к пространствам и страницам."

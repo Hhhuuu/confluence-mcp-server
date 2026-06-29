@@ -32,7 +32,7 @@
 ## 3. Как должна выглядеть структура после распаковки
 
 ```text
-python-pagecreator/
+confluence-mcp-server/
   pagecreator-core/
   confluence-client/
   pagecreator-service/
@@ -181,7 +181,7 @@ pip install -e pagecreator-mcp-server
 ```json
 {
   "mcpServers": {
-    "pagecreator": {
+    "confluence-mcp": {
       "command": ".venv-mcp/bin/python",
       "args": ["-m", "pagecreator_mcp"],
       "env": {
@@ -200,7 +200,7 @@ pip install -e pagecreator-mcp-server
 ### Шаг 1. Собрать образ
 
 ```bash
-docker build -t pagecreator-mcp:local .
+docker build -t confluence-mcp:local .
 ```
 
 ### Шаг 2. Запустить HTTP API
@@ -210,7 +210,7 @@ docker run --rm -p 8000:8000 \
   -e PAGECREATOR_RUNTIME_MODE=http-api \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 ### Шаг 3. Запустить MCP over HTTP
@@ -222,7 +222,7 @@ docker run --rm -p 8000:8000 \
   -e PAGECREATOR_MCP_PORT=8000 \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 ### Шаг 4. Запустить MCP stdio
@@ -232,7 +232,7 @@ docker run --rm -i \
   -e PAGECREATOR_RUNTIME_MODE=mcp-stdio \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 ## 8. Рекомендуемая проверка после развёртывания

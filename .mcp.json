@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "pagecreator": {
+    "confluence-mcp": {
       "command": ".venv-mcp/bin/python",
       "args": [
         "-m",

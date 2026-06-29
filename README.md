@@ -1,4 +1,4 @@
-# Рабочая область Python PageCreator
+# Рабочая область Confluence MCP Server
 
 Отдельная рабочая область для миграции `confluence-page-creator-plugin` на Python.
 
@@ -111,7 +111,7 @@ Authorization: Bearer <token>
 
 ## MCP-конфигурация
 
-В корне рабочей области лежит файл `.mcp.json`, который подключает сервер `pagecreator` через отдельное окружение `.venv-mcp`.
+В корне рабочей области лежит файл `.mcp.json`, который подключает сервер `confluence-mcp` через отдельное окружение `.venv-mcp`.
 
 Команда запуска для stdio-режима:
 
@@ -122,7 +122,7 @@ Authorization: Bearer <token>
 Для локального HTTP-запуска MCP-сервера:
 
 ```bash
-cd python-pagecreator
+cd confluence-mcp-server
 source .venv-mcp/bin/activate
 python pagecreator-mcp-server/run_mcp_http.py
 ```
@@ -134,8 +134,8 @@ python pagecreator-mcp-server/run_mcp_http.py
 Сборка:
 
 ```bash
-cd python-pagecreator
-docker build -t pagecreator-mcp:local .
+cd confluence-mcp-server
+docker build -t confluence-mcp:local .
 ```
 
 ### Режим 1. HTTP API для ручной проверки
@@ -145,7 +145,7 @@ docker run --rm -p 8000:8000 \
   -e PAGECREATOR_RUNTIME_MODE=http-api \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 ### Режим 2. MCP over HTTP
@@ -157,7 +157,7 @@ docker run --rm -p 8000:8000 \
   -e PAGECREATOR_MCP_PORT=8000 \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 ### Режим 3. MCP stdio
@@ -171,7 +171,7 @@ docker run --rm -i \
   -e PAGECREATOR_RUNTIME_MODE=mcp-stdio \
   -v "$(pwd)/config:/app/config:ro" \
   -v "$(pwd)/secrets:/app/secrets:ro" \
-  pagecreator-mcp:local
+  confluence-mcp:local
 ```
 
 Секреты в образ не вшиваются: файл `secrets/confluence.yaml` исключён через `.dockerignore`.

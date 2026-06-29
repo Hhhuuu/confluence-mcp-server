@@ -1,8 +1,8 @@
-# PageCreator MCP: Документация для внешних потребителей
+# Confluence MCP Server: Документация для внешних потребителей
 
 ## 1. Назначение
 
-`PageCreator MCP` — это MCP-сервер для работы с Confluence.
+`Confluence MCP Server` — это MCP-сервер для работы с Confluence.
 
 Сервер позволяет:
 
@@ -170,7 +170,7 @@ confluence:
 ```json
 {
   "mcpServers": {
-    "pagecreator": {
+    "confluence-mcp": {
       "command": ".venv-mcp/bin/python",
       "args": ["-m", "pagecreator_mcp"],
       "env": {
