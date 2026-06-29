@@ -195,6 +195,22 @@ confluence:
 }
 ```
 
+Для Kilo это можно подключить так
+
+```json
+{
+  "mcpServers": {
+    "confluence-mcp": {
+      "type": "local",
+      "workdir": "~/projects/confluence-mcp-server",
+      "command": ["~/projects/confluence-mcp-server/scripts/run_mcp.sh"],
+      "enabled": true
+    }
+  }
+}
+
+```
+
 ## 7. Описание MCP tools
 
 ### `show_runtime_config`
