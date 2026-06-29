@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from confluence_client import ConfluenceClient
 
 from .exceptions import MarkdownBridgeError
@@ -72,3 +74,20 @@ def export_page_to_markdown(client: ConfluenceClient, page_id: str) -> MarkdownE
     """
 
     return ConfluenceMarkdownExporter(client).export_page_to_markdown(page_id)
+
+
+def export_page_to_markdown_file(
+    client: ConfluenceClient,
+    page_id: str,
+    output_path: str | Path,
+) -> MarkdownExportResult:
+    """
+    Выгрузить страницу Confluence в Markdown-файл на диске.
+    """
+
+    result = ConfluenceMarkdownExporter(client).export_page_to_markdown(page_id)
+    path = Path(output_path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(result.markdown, encoding="utf-8")
+    result.output_path = str(path)
+    return result

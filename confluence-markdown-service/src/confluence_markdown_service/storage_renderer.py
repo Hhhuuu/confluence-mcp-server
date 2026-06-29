@@ -244,7 +244,7 @@ class StorageMarkdownRenderer:
             return ""
 
         if not has_header:
-            rows.insert(0, [f"col{i + 1}" for i in range(len(rows[0]))])
+            self._warn("Таблица без заголовка была экспортирована с первой строкой в роли header.")
 
         width = len(rows[0])
         normalized = [row + [""] * (width - len(row)) for row in rows]
@@ -266,6 +266,8 @@ class StorageMarkdownRenderer:
             return ""
 
         alt = target.split("/")[-1]
+        if target.startswith("attachment:"):
+            alt = target.removeprefix("attachment:")
         return f"![{alt}]({target})"
 
     def _render_inline(self, element: ET.Element) -> str:

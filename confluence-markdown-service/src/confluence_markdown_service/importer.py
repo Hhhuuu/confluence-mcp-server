@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 from xml.etree import ElementTree as ET
 
@@ -42,6 +43,17 @@ class ConfluenceMarkdownImporter:
         storage, warnings = self._xhtml_to_storage(html)
         return MarkdownPreviewResult(storage=storage, warnings=warnings)
 
+    def preview_markdown_file_to_storage(self, file_path: str | Path) -> MarkdownPreviewResult:
+        """
+        Преобразовать Markdown-файл в Confluence storage format без публикации.
+        """
+
+        path = Path(file_path).expanduser()
+        markdown_text = self._read_markdown_file(path)
+        result = self.preview_markdown_to_storage(markdown_text)
+        result.source_path = str(path)
+        return result
+
     def create_page_from_markdown(
         self,
         title: str,
@@ -66,6 +78,28 @@ class ConfluenceMarkdownImporter:
             page_url=page.page_url,
             warnings=preview.warnings,
         )
+
+    def create_page_from_markdown_file(
+        self,
+        title: str,
+        file_path: str | Path,
+        parent_id: str,
+        space_key: str,
+    ) -> MarkdownPublishResult:
+        """
+        Создать страницу Confluence из Markdown-файла.
+        """
+
+        path = Path(file_path).expanduser()
+        markdown_text = self._read_markdown_file(path)
+        result = self.create_page_from_markdown(
+            title=title,
+            markdown_text=markdown_text,
+            parent_id=parent_id,
+            space_key=space_key,
+        )
+        result.source_path = str(path)
+        return result
 
     def update_page_from_markdown(
         self,
@@ -99,6 +133,26 @@ class ConfluenceMarkdownImporter:
             warnings=preview.warnings,
         )
 
+    def update_page_from_markdown_file(
+        self,
+        page_id: str,
+        file_path: str | Path,
+        title: str | None = None,
+    ) -> MarkdownPublishResult:
+        """
+        Обновить страницу Confluence содержимым из Markdown-файла.
+        """
+
+        path = Path(file_path).expanduser()
+        markdown_text = self._read_markdown_file(path)
+        result = self.update_page_from_markdown(
+            page_id=page_id,
+            markdown_text=markdown_text,
+            title=title,
+        )
+        result.source_path = str(path)
+        return result
+
     def _render_markdown_to_xhtml(self, markdown_text: str) -> str:
         try:
             return markdown_lib.markdown(
@@ -110,6 +164,17 @@ class ConfluenceMarkdownImporter:
             raise MarkdownBridgeError(
                 f"Не удалось преобразовать Markdown в XHTML: {exc}"
             ) from exc
+
+    @staticmethod
+    def _read_markdown_file(path: Path) -> str:
+        if not path.exists():
+            raise MarkdownBridgeError(f"Не найден Markdown-файл: {path}")
+        if not path.is_file():
+            raise MarkdownBridgeError(f"Путь Markdown-источника не является файлом: {path}")
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise MarkdownBridgeError(f"Не удалось прочитать Markdown-файл {path}: {exc}") from exc
 
     def _xhtml_to_storage(self, xhtml: str) -> tuple[str, list[str]]:
         wrapped = (
@@ -145,47 +210,39 @@ class ConfluenceMarkdownImporter:
                 self._replace_element_in_parent(element, macro)
                 return
 
-        if name == "pre":
-            code = self._convert_pre_to_code_macro(element)
-            if code is not None:
-                self._replace_element_in_parent(element, code)
+        if name == "img":
+            image = self._convert_img_to_confluence_image(element, warnings)
+            if image is not None:
+                self._replace_element_in_parent(element, image)
                 return
 
-        if name == "img":
-            warnings.append(
-                "Markdown-изображения публикуются как обычные HTML img-теги. "
-                "Для attachments может понадобиться отдельная загрузка файлов."
-            )
-
-    def _convert_pre_to_code_macro(self, element: ET.Element) -> ET.Element | None:
-        code_child = None
-        for child in list(element):
-            if self._local_name(child.tag) == "code":
-                code_child = child
-                break
-
-        code_text = self._collapse_text(code_child or element).strip("\n")
-        if not code_text:
+    def _convert_img_to_confluence_image(
+        self,
+        element: ET.Element,
+        warnings: list[str],
+    ) -> ET.Element | None:
+        src = element.attrib.get("src", "").strip()
+        if not src:
+            warnings.append("Markdown-изображение без src было пропущено.")
             return None
 
-        language = ""
-        if code_child is not None:
-            class_name = code_child.attrib.get("class", "")
-            match = re.search(r"language-([A-Za-z0-9_+-]+)", class_name)
-            if match:
-                language = match.group(1)
+        image = ET.Element(f"{{{_AC_URI}}}image")
+        alt = element.attrib.get("alt", "").strip()
+        if alt:
+            image.attrib[f"{{{_AC_URI}}}alt"] = alt
 
-        macro = ET.Element(f"{{{_AC_URI}}}structured-macro")
-        macro.attrib[f"{{{_AC_URI}}}name"] = "code"
+        if src.startswith("attachment:"):
+            attachment = ET.SubElement(image, f"{{urn:ri}}attachment")
+            attachment.attrib["{urn:ri}filename"] = src.removeprefix("attachment:")
+            warnings.append(
+                "Markdown-изображение с attachment: было преобразовано в Confluence attachment image. "
+                "Файл должен уже существовать во вложениях страницы."
+            )
+            return image
 
-        if language:
-            parameter = ET.SubElement(macro, f"{{{_AC_URI}}}parameter")
-            parameter.attrib[f"{{{_AC_URI}}}name"] = "language"
-            parameter.text = language
-
-        body = ET.SubElement(macro, f"{{{_AC_URI}}}plain-text-body")
-        body.text = code_text
-        return macro
+        resource = ET.SubElement(image, f"{{urn:ri}}url")
+        resource.attrib["{urn:ri}value"] = src
+        return image
 
     @staticmethod
     def _build_toc_macro() -> ET.Element:

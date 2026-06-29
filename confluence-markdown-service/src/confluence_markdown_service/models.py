@@ -16,6 +16,7 @@ class MarkdownExportResult(BaseModel):
         title: Заголовок страницы.
         space_key: Ключ пространства, если удалось определить.
         markdown: Сгенерированный Markdown.
+        output_path: Путь до файла, если результат был сохранен на диск.
         warnings: Предупреждения о потерянных или упрощенных конструкциях.
     """
 
@@ -23,6 +24,7 @@ class MarkdownExportResult(BaseModel):
     title: str
     space_key: Optional[str] = None
     markdown: str
+    output_path: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)
 
 
@@ -32,10 +34,12 @@ class MarkdownPreviewResult(BaseModel):
 
     Attributes:
         storage: Содержимое, готовое для публикации в `body.storage.value`.
+        source_path: Путь до исходного Markdown-файла, если preview строился из файла.
         warnings: Предупреждения об упрощениях или неподдерживаемых конструкциях.
     """
 
     storage: str
+    source_path: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)
 
 
@@ -47,10 +51,12 @@ class MarkdownPublishResult(BaseModel):
         title: Заголовок опубликованной страницы.
         page_id: Идентификатор страницы.
         page_url: URL страницы.
+        source_path: Путь до исходного Markdown-файла, если публикация шла из файла.
         warnings: Предупреждения, полученные при преобразовании Markdown в storage.
     """
 
     title: str
     page_id: str
     page_url: str
+    source_path: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)

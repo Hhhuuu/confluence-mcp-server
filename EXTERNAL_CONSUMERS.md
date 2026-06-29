@@ -9,6 +9,8 @@
 - проверять подключение к Confluence
 - получать информацию о пользователе и пространстве
 - искать и читать страницы
+- выгружать страницы в Markdown
+- публиковать Markdown в Confluence
 - строить план создания иерархии страниц
 - создавать вложенные страницы в Confluence
 
@@ -31,6 +33,17 @@
 
 - `find_page`
 - `get_page`
+
+### Markdown bridge
+
+- `export_page_to_markdown`
+- `export_page_to_markdown_file`
+- `preview_markdown_to_storage`
+- `preview_markdown_file_to_storage`
+- `create_page_from_markdown`
+- `create_page_from_markdown_file`
+- `update_page_from_markdown`
+- `update_page_from_markdown_file`
 
 ### Работа с иерархией
 
@@ -338,6 +351,189 @@ confluence:
 Когда использовать:
 
 - для реального создания иерархии страниц
+
+### `export_page_to_markdown`
+
+Назначение:
+
+- выгрузить страницу Confluence в Markdown
+
+Вход:
+
+- `page_id`
+
+Выход:
+
+- `page_id`
+- `title`
+- `space_key`
+- `markdown`
+- `warnings`
+
+Когда использовать:
+
+- для экспорта содержимого страницы в Markdown
+- для подготовки контента к локальной правке
+
+### `export_page_to_markdown_file`
+
+Назначение:
+
+- выгрузить страницу Confluence сразу в локальный markdown-файл
+
+Вход:
+
+- `page_id`
+- `output_path`
+
+Выход:
+
+- `page_id`
+- `title`
+- `space_key`
+- `output_path`
+- `warnings`
+
+Когда использовать:
+
+- когда нужен файл на диске, а не markdown-строка в ответе
+
+### `preview_markdown_to_storage`
+
+Назначение:
+
+- предварительно преобразовать Markdown в `body.storage` без публикации
+
+Вход:
+
+- `markdown_text`
+
+Выход:
+
+- `storage`
+- `warnings`
+
+Когда использовать:
+
+- перед публикацией Markdown в Confluence
+- для отладки конвертации
+
+### `preview_markdown_file_to_storage`
+
+Назначение:
+
+- предварительно преобразовать локальный markdown-файл в `body.storage`
+
+Вход:
+
+- `file_path`
+
+Выход:
+
+- `storage`
+- `source_path`
+- `warnings`
+
+Когда использовать:
+
+- перед публикацией большого markdown-файла
+- для проверки локального документа без записи в Confluence
+
+### `create_page_from_markdown`
+
+Назначение:
+
+- создать страницу Confluence из Markdown
+
+Вход:
+
+- `title`
+- `markdown_text`
+- `parent_id`
+- `space_key` — опционально
+
+Выход:
+
+- `title`
+- `page_id`
+- `page_url`
+- `warnings`
+
+Когда использовать:
+
+- для публикации нового Markdown-документа в Confluence
+
+### `create_page_from_markdown_file`
+
+Назначение:
+
+- создать страницу Confluence из локального markdown-файла
+
+Вход:
+
+- `title`
+- `file_path`
+- `parent_id`
+- `space_key` — опционально
+
+Выход:
+
+- `title`
+- `page_id`
+- `page_url`
+- `source_path`
+- `warnings`
+
+Когда использовать:
+
+- когда markdown уже хранится в файле на диске
+
+### `update_page_from_markdown`
+
+Назначение:
+
+- обновить существующую страницу содержимым из Markdown
+
+Вход:
+
+- `page_id`
+- `markdown_text`
+- `title` — опционально
+
+Выход:
+
+- `title`
+- `page_id`
+- `page_url`
+- `warnings`
+
+Когда использовать:
+
+- для повторной публикации Markdown в уже существующую страницу
+
+### `update_page_from_markdown_file`
+
+Назначение:
+
+- обновить страницу содержимым из локального markdown-файла
+
+Вход:
+
+- `page_id`
+- `file_path`
+- `title` — опционально
+
+Выход:
+
+- `title`
+- `page_id`
+- `page_url`
+- `source_path`
+- `warnings`
+
+Когда использовать:
+
+- когда локальный markdown-файл является источником истины для страницы
 
 ## 8. Формат путей для `plan_pages` и `create_pages`
 
