@@ -1,0 +1,5 @@
+-e ../confluence-pagecreator-core
+-e ../confluence-client
+-e ../confluence-markdown-service
+-e ../confluence-pagecreator-service
+-e .
