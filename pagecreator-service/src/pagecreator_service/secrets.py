@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
+from yaml import YAMLError
 
 from .exceptions import (
     InvalidSecretsError,
@@ -114,8 +115,13 @@ def load_secrets_from_env() -> ConfluenceSecrets:
 
 
 def _read_yaml(secret_path: Union[str, Path]) -> dict[str, Any]:
-    with Path(secret_path).expanduser().open("r", encoding="utf-8") as stream:
-        data = yaml.safe_load(stream)
+    try:
+        with Path(secret_path).expanduser().open("r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+    except YAMLError as exc:
+        raise InvalidSecretsError(
+            f"Файл secrets/confluence.yaml содержит некорректный YAML: {exc}"
+        ) from exc
     if data is None:
         return {}
     if not isinstance(data, dict):

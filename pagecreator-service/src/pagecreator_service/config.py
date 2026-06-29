@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
+from yaml import YAMLError
 
 from .exceptions import ConfigFileNotFoundError, InvalidConfigError
 
@@ -73,8 +74,11 @@ def load_app_config(config_path: str | Path) -> AppConfig:
 
 
 def _read_yaml(config_path: str | Path) -> dict[str, Any]:
-    with Path(config_path).expanduser().open("r", encoding="utf-8") as stream:
-        data = yaml.safe_load(stream)
+    try:
+        with Path(config_path).expanduser().open("r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+    except YAMLError as exc:
+        raise InvalidConfigError(f"Файл config/app.yaml содержит некорректный YAML: {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
