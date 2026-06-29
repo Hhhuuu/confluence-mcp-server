@@ -7,7 +7,7 @@ name = "confluence-markdown-service"
 version = "0.1.0"
 description = "Сервис экспорта и импорта Markdown для Confluence"
 requires-python = ">=3.9"
-dependencies = ["confluence-client", "pydantic>=2.7"]
+dependencies = ["confluence-client", "pydantic>=2.7", "Markdown>=3.10"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -41,6 +41,9 @@ uvicorn run_api:app --reload
 - `POST /api/v1/plan` — построить план без записи в Confluence
 - `POST /api/v1/create` — создать страницы в Confluence
 - `GET /api/v1/page/{page_id}/markdown` — выгрузить страницу Confluence в Markdown
+- `POST /api/v1/page/markdown/preview` — преобразовать Markdown в Confluence storage без публикации
+- `POST /api/v1/page/markdown/create` — создать страницу Confluence из Markdown
+- `POST /api/v1/page/markdown/update` — обновить страницу Confluence из Markdown
 
 Пример запроса для предварительного просмотра:
 

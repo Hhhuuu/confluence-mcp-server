@@ -5,7 +5,11 @@ from __future__ import annotations
 import os
 from typing import Dict, List, Optional, Tuple, Union
 
-from confluence_markdown_service import ConfluenceMarkdownExporter, MarkdownBridgeError
+from confluence_markdown_service import (
+    ConfluenceMarkdownExporter,
+    ConfluenceMarkdownImporter,
+    MarkdownBridgeError,
+)
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -58,6 +62,49 @@ class CreateRequest(BaseModel):
     paths: List[str] = Field(default_factory=list)
     space_key: Optional[str] = None
     content: str = ""
+
+
+class MarkdownPreviewRequest(BaseModel):
+    """
+    Входные данные для preview markdown -> storage.
+
+    Attributes:
+        markdown: Исходный Markdown.
+    """
+
+    markdown: str = ""
+
+
+class MarkdownCreateRequest(BaseModel):
+    """
+    Входные данные для создания страницы из Markdown.
+
+    Attributes:
+        title: Заголовок новой страницы.
+        markdown: Исходный Markdown.
+        parent_id: Идентификатор родительской страницы.
+        space_key: Ключ пространства. Если не задан, берется из конфига.
+    """
+
+    title: str
+    markdown: str = ""
+    parent_id: str
+    space_key: Optional[str] = None
+
+
+class MarkdownUpdateRequest(BaseModel):
+    """
+    Входные данные для обновления страницы из Markdown.
+
+    Attributes:
+        page_id: Идентификатор страницы.
+        markdown: Исходный Markdown.
+        title: Необязательная замена заголовка страницы.
+    """
+
+    page_id: str
+    markdown: str = ""
+    title: Optional[str] = None
 
 
 @app.get("/health")
@@ -279,6 +326,92 @@ def export_page_markdown(page_id: str) -> dict:
         with _load_client() as client:
             exporter = ConfluenceMarkdownExporter(client)
             result = exporter.export_page_to_markdown(page_id)
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except MarkdownBridgeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return result.model_dump(mode="json")
+
+
+@app.post("/api/v1/page/markdown/preview")
+def preview_markdown(payload: MarkdownPreviewRequest) -> dict:
+    """
+    Предварительно преобразовать Markdown в Confluence storage format.
+    """
+
+    try:
+        with _load_client() as client:
+            importer = ConfluenceMarkdownImporter(client)
+            result = importer.preview_markdown_to_storage(payload.markdown)
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except MarkdownBridgeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return result.model_dump(mode="json")
+
+
+@app.post("/api/v1/page/markdown/create")
+def create_page_from_markdown(payload: MarkdownCreateRequest) -> dict:
+    """
+    Создать страницу Confluence из Markdown.
+    """
+
+    try:
+        config = load_app_config(resolve_config_path())
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    effective_space_key = payload.space_key or config.confluence.default_space_key
+    if not effective_space_key:
+        raise HTTPException(status_code=400, detail="Не указан space_key и в конфиге нет значения по умолчанию.")
+
+    try:
+        with _load_client() as client:
+            importer = ConfluenceMarkdownImporter(client)
+            result = importer.create_page_from_markdown(
+                title=payload.title,
+                markdown_text=payload.markdown,
+                parent_id=payload.parent_id,
+                space_key=effective_space_key,
+            )
+    except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (InvalidConfigError, InvalidSecretsError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except MarkdownBridgeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return result.model_dump(mode="json")
+
+
+@app.post("/api/v1/page/markdown/update")
+def update_page_from_markdown(payload: MarkdownUpdateRequest) -> dict:
+    """
+    Обновить существующую страницу Confluence содержимым из Markdown.
+    """
+
+    try:
+        with _load_client() as client:
+            importer = ConfluenceMarkdownImporter(client)
+            result = importer.update_page_from_markdown(
+                page_id=payload.page_id,
+                markdown_text=payload.markdown,
+                title=payload.title,
+            )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except (InvalidConfigError, InvalidSecretsError) as exc:
