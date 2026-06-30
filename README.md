@@ -8,6 +8,8 @@
 
 План по развитию экспорта и импорта Markdown лежит в `MARKDOWN_BRIDGE_PLAN.md`.
 
+Отдельная инструкция по запуску в Docker лежит в `DOCKER_RUN.md`.
+
 ## Структура
 
 - `confluence-pagecreator-service` — сервис page creator, включая разбор путей и построение плана
