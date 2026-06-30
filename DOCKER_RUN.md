@@ -148,7 +148,63 @@ docker run --rm -i \
   confluence-mcp:local
 ```
 
-## 7. Какие переменные окружения поддерживаются
+## 7. Примеры подключения MCP-клиента через Docker
+
+### Вариант 1. MCP stdio через `docker run`
+
+Подходит для клиентов, которые умеют запускать локальную команду.
+
+Пример конфигурации:
+
+```json
+{
+  "mcpServers": {
+    "confluence-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "PAGECREATOR_RUNTIME_MODE=mcp-stdio",
+        "-v",
+        "./config:/app/config:ro",
+        "-v",
+        "./secrets:/app/secrets:ro",
+        "confluence-mcp:local"
+      ]
+    }
+  }
+}
+```
+
+Если MCP-клиент не любит относительные пути, используй абсолютные пути для volume mounts.
+
+### Вариант 2. MCP over HTTP
+
+Сначала подними контейнер:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e PAGECREATOR_RUNTIME_MODE=mcp-http \
+  -e PAGECREATOR_MCP_HOST=0.0.0.0 \
+  -e PAGECREATOR_MCP_PORT=8000 \
+  -v "$(pwd)/config:/app/config:ro" \
+  -v "$(pwd)/secrets:/app/secrets:ro" \
+  confluence-mcp:local
+```
+
+После этого MCP-клиент подключается к HTTP endpoint контейнера.
+
+Если клиент ожидает URL, обычно используется адрес вида:
+
+```text
+http://127.0.0.1:8000/mcp
+```
+
+Если конкретный клиент требует другой формат MCP HTTP-конфигурации, укажи тот же базовый URL контейнера.
+
+## 8. Какие переменные окружения поддерживаются
 
 ### Общие
 
@@ -181,7 +237,7 @@ docker run --rm -i \
 - `PAGECREATOR_MCP_HOST=0.0.0.0`
 - `PAGECREATOR_MCP_PORT=8000`
 
-## 8. Безопасность
+## 9. Безопасность
 
 Реальные секреты не копируются в образ:
 
@@ -195,7 +251,7 @@ docker run --rm -i \
 
 Это рекомендуемый способ и для локальной работы, и для CI/CD.
 
-## 9. Типовой сценарий запуска
+## 10. Типовой сценарий запуска
 
 1. Создать `config/app.yaml`
 2. Создать `secrets/confluence.yaml`
@@ -221,7 +277,7 @@ docker run --rm -p 8000:8000 \
 curl http://127.0.0.1:8000/health
 ```
 
-## 10. Типовые проблемы
+## 11. Типовые проблемы
 
 ### Контейнер стартует, но Confluence не отвечает
 
@@ -255,7 +311,7 @@ curl http://127.0.0.1:8000/health
 - использовать локальный launcher `scripts/run_mcp.sh`
 - либо запускать через Docker как фиксированную команду
 
-## 11. Что дальше
+## 12. Что дальше
 
 После запуска на Docker можно:
 
