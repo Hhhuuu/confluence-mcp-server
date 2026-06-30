@@ -17,7 +17,8 @@ class StorageMarkdownRenderer:
     Ограниченный renderer Confluence storage format в Markdown.
 
     Renderer ориентирован на текст и базовые Markdown-конструкции.
-    Неизвестные макросы не валят экспорт: они пропускаются с предупреждением.
+    Неизвестные макросы и нестандартные блоки не валят экспорт: по возможности
+    они упрощаются до текстового содержимого с предупреждением.
     """
 
     def __init__(self) -> None:
@@ -112,10 +113,18 @@ class StorageMarkdownRenderer:
             return self._render_blocks(element, list_depth=list_depth)
 
         text = self._render_inline(element).strip()
+        if not text:
+            text = self._fallback_element_text(element)
         return [text] if text else []
 
     def _render_macro(self, element: ET.Element) -> str:
         macro_name = attr_value(element, "ac:name") or attr_value(element, "name") or "unknown"
+
+        if macro_name == "markdown":
+            body = self._macro_plain_text_body(element)
+            if body:
+                self._warn("Макрос markdown был выгружен как обычный markdown-текст.")
+                return body.strip()
 
         if macro_name == "code":
             language = self._macro_parameter(element, "language") or ""
@@ -141,10 +150,20 @@ class StorageMarkdownRenderer:
             self._warn(f"Макрос {macro_name} был пропущен при экспорте.")
             return ""
 
+        plain_text = self._macro_plain_text_body(element)
+        if plain_text:
+            self._warn(f"Макрос {macro_name} был упрощен до plain-text содержимого.")
+            return plain_text.strip()
+
         rich_text = self._macro_rich_text_body(element)
         if rich_text:
             self._warn(f"Макрос {macro_name} был упрощен до текстового содержимого.")
             return rich_text
+
+        fallback_text = self._fallback_element_text(element)
+        if fallback_text:
+            self._warn(f"Макрос {macro_name} был упрощен до извлеченного текста.")
+            return fallback_text
 
         self._warn(f"Макрос {macro_name} был пропущен при экспорте.")
         return ""
@@ -399,6 +418,17 @@ class StorageMarkdownRenderer:
     def _warn(self, message: str) -> None:
         if message not in self.warnings:
             self.warnings.append(message)
+
+    def _fallback_element_text(self, element: ET.Element) -> str:
+        """
+        Аварийно извлечь текст из неизвестного блока или макроса.
+
+        Метод не пытается сохранить форматирование 1:1, но помогает
+        не потерять полезное текстовое содержимое полностью.
+        """
+
+        text = self._normalize_inline_text(element_text_content(element))
+        return text.strip()
 
     @staticmethod
     def _normalize_inline_text(text: str) -> str:
