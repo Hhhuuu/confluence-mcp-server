@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import html
 import re
 from xml.etree import ElementTree as ET
 
@@ -42,7 +43,61 @@ class AdmonitionsExtension(ConfluenceMarkdownExtension):
         "[!NOTE], [!WARNING], [!TIP], [!INFO], [!ERROR]."
     )
 
+    def preprocess_markdown(self, markdown_text: str) -> str:
+        lines = markdown_text.splitlines()
+        output: list[str] = []
+        index = 0
+
+        while index < len(lines):
+            line = lines[index]
+            marker_match = re.match(r"^\s*>\s*\[!([A-Z]+)\]\s*(.*)$", line)
+            if not marker_match:
+                output.append(line)
+                index += 1
+                continue
+
+            marker = marker_match.group(1).upper()
+            first_remainder = marker_match.group(2).strip()
+            body_lines: list[str] = []
+            if first_remainder:
+                body_lines.append(first_remainder)
+
+            index += 1
+            while index < len(lines):
+                next_line = lines[index]
+                if re.match(r"^\s*>\s*\[![A-Z]+\]\s*(.*)$", next_line):
+                    break
+                if not next_line.strip():
+                    body_lines.append("")
+                    index += 1
+                    continue
+                continuation_match = re.match(r"^\s*>\s?(.*)$", next_line)
+                if not continuation_match:
+                    break
+                body_lines.append(continuation_match.group(1))
+                index += 1
+
+            html_block = self._build_placeholder_block(marker, body_lines)
+            output.append(html_block)
+
+        return "\n".join(output)
+
     def transform_import_element(self, importer, element: ET.Element) -> MarkdownImportTransformResult:
+        placeholder_marker = (element.attrib.get("data-admonition") or "").strip().upper()
+        if placeholder_marker:
+            macro = self._build_macro_for_marker(placeholder_marker)
+            if macro is None:
+                return MarkdownImportTransformResult()
+
+            rich_body = ET.SubElement(macro, f"{{{_AC_URI}}}rich-text-body")
+            copied_children = [copy.deepcopy(child) for child in list(element)]
+            for child in copied_children:
+                rich_body.append(child)
+
+            if placeholder_marker == "ERROR":
+                importer._warn("Admonition [!ERROR] был преобразован в panel macro Confluence.")  # noqa: SLF001
+            return MarkdownImportTransformResult(handled=True, replacement=macro)
+
         if importer._local_name(element.tag) != "blockquote":  # noqa: SLF001
             return MarkdownImportTransformResult()
 
@@ -146,3 +201,28 @@ class AdmonitionsExtension(ConfluenceMarkdownExtension):
         lines = [f"> [!{marker}]"]
         lines.extend(f"> {line}" if line.strip() else ">" for line in body.splitlines())
         return "\n".join(lines)
+
+    @staticmethod
+    def _build_placeholder_block(marker: str, body_lines: list[str]) -> str:
+        paragraphs: list[str] = []
+        current: list[str] = []
+
+        def flush() -> None:
+            if not current:
+                return
+            text = " ".join(part.strip() for part in current if part.strip()).strip()
+            paragraphs.append(f"<p>{html.escape(text)}</p>" if text else "<p></p>")
+            current.clear()
+
+        for line in body_lines:
+            if not line.strip():
+                flush()
+                continue
+            current.append(line)
+        flush()
+
+        if not paragraphs:
+            paragraphs = ["<p></p>"]
+
+        inner = "".join(paragraphs)
+        return f'<blockquote data-admonition="{marker}">{inner}</blockquote>'

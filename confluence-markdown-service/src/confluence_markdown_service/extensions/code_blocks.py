@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from xml.etree import ElementTree as ET
 
@@ -14,6 +15,9 @@ from .base import (
 
 _AC_URI = "urn:ac"
 _LANGUAGE_RE = re.compile(r"(?:^|\\s)language-([A-Za-z0-9_+-]+)(?:\\s|$)")
+_FENCED_CODE_WITH_TITLE_RE = re.compile(
+    r"(?ms)^```(?P<language>[A-Za-z0-9_+-]*)\s*\{title=\"(?P<title>[^\"]+)\"\}\n(?P<body>.*?)\n```$"
+)
 
 
 class CodeBlocksExtension(ConfluenceMarkdownExtension):
@@ -25,6 +29,48 @@ class CodeBlocksExtension(ConfluenceMarkdownExtension):
         "которые преобразуются в Confluence code macro."
     )
 
+    def preprocess_markdown(self, markdown_text: str) -> str:
+        lines = markdown_text.splitlines()
+        output: list[str] = []
+        index = 0
+
+        while index < len(lines):
+            line = lines[index]
+            header_match = re.match(
+                r'^```(?P<language>[A-Za-z0-9_+-]*)\s*\{title="(?P<title>[^"]+)"\}\s*$',
+                line,
+            )
+            if not header_match:
+                output.append(line)
+                index += 1
+                continue
+
+            language = header_match.group("language").strip()
+            title = header_match.group("title").strip()
+            index += 1
+            body_lines: list[str] = []
+            while index < len(lines) and lines[index] != "```":
+                body_lines.append(lines[index])
+                index += 1
+
+            if index >= len(lines):
+                output.append(line)
+                output.extend(body_lines)
+                break
+
+            index += 1
+            body = "\n".join(body_lines)
+            css_class = f' class="language-{language}"' if language else ""
+            title_attr = html.escape(title, quote=True)
+            lang_attr = html.escape(language, quote=True)
+            escaped_body = html.escape(body)
+            output.append(
+                f'<pre data-code-title="{title_attr}" data-code-language="{lang_attr}">'
+                f'<code{css_class}>{escaped_body}</code></pre>'
+            )
+
+        return "\n".join(output)
+
     def transform_import_element(self, importer, element: ET.Element) -> MarkdownImportTransformResult:
         if importer._local_name(element.tag) != "pre":  # noqa: SLF001
             return MarkdownImportTransformResult()
@@ -33,8 +79,16 @@ class CodeBlocksExtension(ConfluenceMarkdownExtension):
         if code is None:
             return MarkdownImportTransformResult()
 
-        language = self._extract_language(code)
-        title = attr_value(code, "title") or code.attrib.get("title") or ""
+        language = (
+            element.attrib.get("data-code-language", "").strip()
+            or self._extract_language(code)
+        )
+        title = (
+            element.attrib.get("data-code-title", "").strip()
+            or attr_value(code, "title")
+            or code.attrib.get("title")
+            or ""
+        )
         body = element_text_content(code)
 
         if not language and not title:

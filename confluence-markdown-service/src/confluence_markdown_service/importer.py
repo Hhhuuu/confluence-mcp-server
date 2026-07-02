@@ -430,8 +430,27 @@ class ConfluenceMarkdownImporter:
     def _serialize_inner_xml(self, root: ET.Element) -> str:
         ET.register_namespace("ac", _AC_URI)
         ET.register_namespace("ri", _RI_URI)
-        return "".join(
+        xml = "".join(
             ET.tostring(child, encoding="unicode", method="xml") for child in list(root)
+        )
+        return self._postprocess_storage_xml(xml)
+
+    @staticmethod
+    def _postprocess_storage_xml(xml: str) -> str:
+        def replace_plain_text_body(match: re.Match[str]) -> str:
+            body = match.group("body")
+            unescaped = (
+                body.replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&")
+            )
+            return f'<ac:plain-text-body><![CDATA[{unescaped}]]></ac:plain-text-body>'
+
+        return re.sub(
+            r"<ac:plain-text-body>(?P<body>.*?)</ac:plain-text-body>",
+            replace_plain_text_body,
+            xml,
+            flags=re.DOTALL,
         )
 
     def _warn(self, message: str) -> None:
