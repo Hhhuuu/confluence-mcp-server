@@ -44,6 +44,7 @@
 - `create_page_from_markdown_file`
 - `update_page_from_markdown`
 - `update_page_from_markdown_file`
+- `list_markdown_extensions`
 
 ### Работа с иерархией
 
@@ -213,6 +214,17 @@ confluence:
 
 ## 7. Описание MCP tools
 
+### `list_markdown_extensions`
+
+Назначение:
+
+- показать встроенные markdown-расширения для Confluence bridge
+
+Когда использовать:
+
+- при первом знакомстве с markdown plugins
+- перед настройкой custom formatting сценариев
+
 ### `show_runtime_config`
 
 Назначение:
@@ -377,6 +389,7 @@ confluence:
 Вход:
 
 - `page_id`
+- `enabled_extensions` — необязательный список расширений, например `["toc", "admonitions", "code_blocks"]`
 
 Выход:
 
@@ -749,3 +762,14 @@ Root/Team // Dev/Runbook
 - `space_key` лучше фиксировать явно в конфиге
 - перед массовым созданием страниц всегда сначала использовать `plan_pages`
 - секреты не должны попадать в git
+Для markdown-сценариев можно дополнительно передавать:
+
+- `enabled_extensions`
+
+Поддерживаемые встроенные расширения:
+
+- `toc`
+- `admonitions`
+- `code_blocks`
+
+Подробное описание и примеры лежат в `EXTENSIONS.md`.

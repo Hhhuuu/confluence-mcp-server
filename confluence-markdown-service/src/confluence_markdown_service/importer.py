@@ -5,12 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Iterable
+from typing import Iterable, Sequence
 from xml.etree import ElementTree as ET
 
 import markdown as markdown_lib
 from confluence_client import ConfluenceClient
 
+from .extensions import ConfluenceMarkdownExtension, build_markdown_extension_registry
 from .exceptions import MarkdownBridgeError
 from .models import (
     MarkdownAttachmentResult,
@@ -20,7 +21,6 @@ from .models import (
 
 _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
-_TOC_MARKERS = {"[TOC]", "[[TOC]]"}
 _MARKDOWN_IMAGE_PATTERN = re.compile(r"(!\[[^\]]*]\()([^)]+)(\))")
 
 
@@ -40,9 +40,20 @@ class ConfluenceMarkdownImporter:
     Результат публикуется как `body.storage` через существующий `confluence-client`.
     """
 
-    def __init__(self, client: ConfluenceClient) -> None:
+    def __init__(
+        self,
+        client: ConfluenceClient,
+        *,
+        enabled_extensions: Sequence[str] | None = None,
+        extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+    ) -> None:
         self._client = client
         self._root: ET.Element | None = None
+        self._registry = build_markdown_extension_registry(
+            enabled_extensions=enabled_extensions,
+            extra_extensions=extra_extensions,
+        )
+        self.warnings: list[str] = []
 
     def preview_markdown_to_storage(self, markdown_text: str) -> MarkdownPreviewResult:
         """
@@ -55,7 +66,9 @@ class ConfluenceMarkdownImporter:
             Содержимое storage format и предупреждения.
         """
 
-        html = self._render_markdown_to_xhtml(markdown_text)
+        self.warnings = []
+        prepared_markdown = self._registry.preprocess_markdown(markdown_text)
+        html = self._render_markdown_to_xhtml(prepared_markdown)
         storage, warnings = self._xhtml_to_storage(html)
         return MarkdownPreviewResult(storage=storage, warnings=warnings)
 
@@ -342,26 +355,26 @@ class ConfluenceMarkdownImporter:
             ) from exc
 
         self._root = root
-        warnings: list[str] = []
-        self._transform_tree(root, warnings)
+        self._transform_tree(root)
         storage = self._serialize_inner_xml(root)
-        return storage, warnings
+        return storage, list(self.warnings)
 
-    def _transform_tree(self, element: ET.Element, warnings: list[str]) -> None:
+    def _transform_tree(self, element: ET.Element) -> None:
         for child in list(element):
-            self._transform_tree(child, warnings)
+            self._transform_tree(child)
+
+        for extension in self._registry.extensions:
+            result = extension.transform_import_element(self, element)
+            if not result.handled:
+                continue
+            if result.replacement is not None:
+                self._replace_element_in_parent(element, result.replacement)
+            return
 
         name = self._local_name(element.tag)
 
-        if name == "p":
-            text = self._collapse_text(element)
-            if text.strip() in _TOC_MARKERS:
-                macro = self._build_toc_macro()
-                self._replace_element_in_parent(element, macro)
-                return
-
         if name == "img":
-            image = self._convert_img_to_confluence_image(element, warnings)
+            image = self._convert_img_to_confluence_image(element)
             if image is not None:
                 self._replace_element_in_parent(element, image)
                 return
@@ -369,11 +382,10 @@ class ConfluenceMarkdownImporter:
     def _convert_img_to_confluence_image(
         self,
         element: ET.Element,
-        warnings: list[str],
     ) -> ET.Element | None:
         src = element.attrib.get("src", "").strip()
         if not src:
-            warnings.append("Markdown-изображение без src было пропущено.")
+            self._warn("Markdown-изображение без src было пропущено.")
             return None
 
         image = ET.Element(f"{{{_AC_URI}}}image")
@@ -389,12 +401,6 @@ class ConfluenceMarkdownImporter:
         resource = ET.SubElement(image, f"{{{_RI_URI}}}url")
         resource.attrib[f"{{{_RI_URI}}}value"] = src
         return image
-
-    @staticmethod
-    def _build_toc_macro() -> ET.Element:
-        macro = ET.Element(f"{{{_AC_URI}}}structured-macro")
-        macro.attrib[f"{{{_AC_URI}}}name"] = "toc"
-        return macro
 
     def _replace_element_in_parent(self, old: ET.Element, new: ET.Element) -> None:
         parent = self._find_parent(old)
@@ -428,6 +434,10 @@ class ConfluenceMarkdownImporter:
             ET.tostring(child, encoding="unicode", method="xml") for child in list(root)
         )
 
+    def _warn(self, message: str) -> None:
+        if message not in self.warnings:
+            self.warnings.append(message)
+
     @staticmethod
     def _collapse_text(element: ET.Element) -> str:
         parts: list[str] = []
@@ -449,9 +459,16 @@ class ConfluenceMarkdownImporter:
 def preview_markdown_to_storage(
     client: ConfluenceClient,
     markdown_text: str,
+    *,
+    enabled_extensions: Sequence[str] | None = None,
+    extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
 ) -> MarkdownPreviewResult:
     """
     Функциональный wrapper для preview markdown -> storage.
     """
 
-    return ConfluenceMarkdownImporter(client).preview_markdown_to_storage(markdown_text)
+    return ConfluenceMarkdownImporter(
+        client,
+        enabled_extensions=enabled_extensions,
+        extra_extensions=extra_extensions,
+    ).preview_markdown_to_storage(markdown_text)

@@ -11,6 +11,7 @@ from confluence_markdown_service import (
     MarkdownBridgeError,
     export_page_to_markdown_file,
     export_page_tree_to_markdown_files,
+    list_builtin_markdown_extensions,
 )
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -75,6 +76,7 @@ class MarkdownPreviewRequest(BaseModel):
     """
 
     markdown: str = ""
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownCreateRequest(BaseModel):
@@ -92,6 +94,7 @@ class MarkdownCreateRequest(BaseModel):
     markdown: str = ""
     parent_id: str
     space_key: Optional[str] = None
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownUpdateRequest(BaseModel):
@@ -107,12 +110,14 @@ class MarkdownUpdateRequest(BaseModel):
     page_id: str
     markdown: str = ""
     title: Optional[str] = None
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownFilePreviewRequest(BaseModel):
     """Входные данные для preview markdown-файла."""
 
     file_path: str
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownFileCreateRequest(BaseModel):
@@ -122,6 +127,7 @@ class MarkdownFileCreateRequest(BaseModel):
     file_path: str
     parent_id: str
     space_key: Optional[str] = None
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownFileUpdateRequest(BaseModel):
@@ -130,18 +136,33 @@ class MarkdownFileUpdateRequest(BaseModel):
     page_id: str
     file_path: str
     title: Optional[str] = None
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownFileExportRequest(BaseModel):
     """Входные данные для выгрузки страницы в markdown-файл."""
 
     output_path: str
+    enabled_extensions: List[str] = Field(default_factory=list)
 
 
 class MarkdownTreeExportRequest(BaseModel):
     """Входные данные для выгрузки дерева страниц в markdown-файлы."""
 
     output_dir: str
+    enabled_extensions: List[str] = Field(default_factory=list)
+
+
+@app.get("/api/v1/markdown/extensions")
+def list_markdown_extensions() -> dict:
+    """Показать встроенные markdown-расширения для Confluence bridge."""
+
+    return {
+        "extensions": [
+            extension.model_dump(mode="json") if hasattr(extension, "model_dump") else extension.__dict__
+            for extension in list_builtin_markdown_extensions()
+        ]
+    }
 
 
 @app.get("/health")
@@ -348,7 +369,7 @@ def client_page_search(title: str, space_key: Optional[str] = None) -> dict:
 
 
 @app.get("/api/v1/page/{page_id}/markdown")
-def export_page_markdown(page_id: str) -> dict:
+def export_page_markdown(page_id: str, enabled_extensions: str = "") -> dict:
     """
     Выгрузить страницу Confluence в Markdown.
 
@@ -361,7 +382,10 @@ def export_page_markdown(page_id: str) -> dict:
 
     try:
         with _load_client() as client:
-            exporter = ConfluenceMarkdownExporter(client)
+            exporter = ConfluenceMarkdownExporter(
+                client,
+                enabled_extensions=_parse_enabled_extensions(enabled_extensions),
+            )
             result = exporter.export_page_to_markdown(page_id)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -387,6 +411,7 @@ def export_page_markdown_to_file(page_id: str, payload: MarkdownFileExportReques
                 client=client,
                 page_id=page_id,
                 output_path=payload.output_path,
+                enabled_extensions=payload.enabled_extensions,
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -412,6 +437,7 @@ def export_page_tree_markdown_to_files(page_id: str, payload: MarkdownTreeExport
                 client=client,
                 root_page_id=page_id,
                 output_dir=payload.output_dir,
+                enabled_extensions=payload.enabled_extensions,
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -433,7 +459,10 @@ def preview_markdown(payload: MarkdownPreviewRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.preview_markdown_to_storage(payload.markdown)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -455,7 +484,10 @@ def preview_markdown_file(payload: MarkdownFilePreviewRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.preview_markdown_file_to_storage(payload.file_path)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -488,7 +520,10 @@ def create_page_from_markdown(payload: MarkdownCreateRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.create_page_from_markdown(
                 title=payload.title,
                 markdown_text=payload.markdown,
@@ -526,7 +561,10 @@ def create_page_from_markdown_file(payload: MarkdownFileCreateRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.create_page_from_markdown_file(
                 title=payload.title,
                 file_path=payload.file_path,
@@ -553,7 +591,10 @@ def update_page_from_markdown(payload: MarkdownUpdateRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.update_page_from_markdown(
                 page_id=payload.page_id,
                 markdown_text=payload.markdown,
@@ -579,7 +620,10 @@ def update_page_from_markdown_file(payload: MarkdownFileUpdateRequest) -> dict:
 
     try:
         with _load_client() as client:
-            importer = ConfluenceMarkdownImporter(client)
+            importer = ConfluenceMarkdownImporter(
+                client,
+                enabled_extensions=payload.enabled_extensions,
+            )
             result = importer.update_page_from_markdown_file(
                 page_id=payload.page_id,
                 file_path=payload.file_path,
@@ -604,3 +648,9 @@ def _load_service() -> Tuple[PageCreatorService, Optional[str]]:
 def _load_client():
     client, _ = load_runtime_client()
     return client
+
+
+def _parse_enabled_extensions(raw_value: str) -> List[str]:
+    if not raw_value.strip():
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]

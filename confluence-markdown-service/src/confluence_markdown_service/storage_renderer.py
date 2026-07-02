@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, Sequence
 from xml.etree import ElementTree as ET
 
+from .extensions import ConfluenceMarkdownExtension, build_markdown_extension_registry
 from .storage_normalizer import attr_value, element_text_content, local_name, namespace_uri
 
 _AC_URI = "urn:ac"
@@ -21,8 +22,17 @@ class StorageMarkdownRenderer:
     они упрощаются до текстового содержимого с предупреждением.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        enabled_extensions: Sequence[str] | None = None,
+        extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+    ) -> None:
         self.warnings: list[str] = []
+        self._registry = build_markdown_extension_registry(
+            enabled_extensions=enabled_extensions,
+            extra_extensions=extra_extensions,
+        )
 
     def render_document(self, root: ET.Element) -> str:
         """
@@ -118,7 +128,12 @@ class StorageMarkdownRenderer:
         return [text] if text else []
 
     def _render_macro(self, element: ET.Element) -> str:
-        macro_name = attr_value(element, "ac:name") or attr_value(element, "name") or "unknown"
+        for extension in self._registry.extensions:
+            result = extension.render_macro(self, element)
+            if result.handled:
+                return result.markdown
+
+        macro_name = self._macro_name(element)
 
         if macro_name == "markdown":
             body = self._macro_plain_text_body(element)
@@ -167,6 +182,9 @@ class StorageMarkdownRenderer:
 
         self._warn(f"Макрос {macro_name} был пропущен при экспорте.")
         return ""
+
+    def _macro_name(self, element: ET.Element) -> str:
+        return attr_value(element, "ac:name") or attr_value(element, "name") or "unknown"
 
     def _render_preformatted(self, element: ET.Element) -> str:
         language = ""

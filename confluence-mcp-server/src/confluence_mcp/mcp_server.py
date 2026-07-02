@@ -10,6 +10,7 @@ from confluence_markdown_service import (
     ConfluenceMarkdownImporter,
     export_page_to_markdown_file,
     export_page_tree_to_markdown_files,
+    list_builtin_markdown_extensions,
 )
 from mcp.server.fastmcp import FastMCP
 from confluence_pagecreator_service import CreatePagesRequest
@@ -156,13 +157,29 @@ def get_page(page_id: str, include_storage: bool = False) -> dict:
 
 
 @mcp.tool(
+    name="list_markdown_extensions",
+    description="Показать встроенные markdown-расширения для Confluence markdown bridge.",
+)
+def list_markdown_extensions() -> dict:
+    return {
+        "extensions": [
+            extension.__dict__
+            for extension in list_builtin_markdown_extensions()
+        ]
+    }
+
+
+@mcp.tool(
     name="export_page_to_markdown",
     description="Выгрузить страницу Confluence в Markdown с предупреждениями о потерянных макросах.",
 )
-def export_page_to_markdown(page_id: str) -> dict:
+def export_page_to_markdown(page_id: str, enabled_extensions: Optional[List[str]] = None) -> dict:
     client, _ = load_runtime_client()
     try:
-        exporter = ConfluenceMarkdownExporter(client)
+        exporter = ConfluenceMarkdownExporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = exporter.export_page_to_markdown(page_id)
         return result.model_dump(mode="json")
     finally:
@@ -173,13 +190,18 @@ def export_page_to_markdown(page_id: str) -> dict:
     name="export_page_to_markdown_file",
     description="Выгрузить страницу Confluence в Markdown-файл на локальном диске.",
 )
-def export_page_to_markdown_file_tool(page_id: str, output_path: str) -> dict:
+def export_page_to_markdown_file_tool(
+    page_id: str,
+    output_path: str,
+    enabled_extensions: Optional[List[str]] = None,
+) -> dict:
     client, _ = load_runtime_client()
     try:
         result = export_page_to_markdown_file(
             client=client,
             page_id=page_id,
             output_path=output_path,
+            enabled_extensions=enabled_extensions,
         )
         return result.model_dump(mode="json")
     finally:
@@ -190,13 +212,18 @@ def export_page_to_markdown_file_tool(page_id: str, output_path: str) -> dict:
     name="export_page_tree_to_markdown_files",
     description="Выгрузить страницу и все её дочерние страницы в дерево локальных Markdown-файлов.",
 )
-def export_page_tree_to_markdown_files_tool(page_id: str, output_dir: str) -> dict:
+def export_page_tree_to_markdown_files_tool(
+    page_id: str,
+    output_dir: str,
+    enabled_extensions: Optional[List[str]] = None,
+) -> dict:
     client, _ = load_runtime_client()
     try:
         result = export_page_tree_to_markdown_files(
             client=client,
             root_page_id=page_id,
             output_dir=output_dir,
+            enabled_extensions=enabled_extensions,
         )
         return result.model_dump(mode="json")
     finally:
@@ -207,10 +234,13 @@ def export_page_tree_to_markdown_files_tool(page_id: str, output_dir: str) -> di
     name="preview_markdown_to_storage",
     description="Преобразовать Markdown в Confluence storage format без публикации страницы.",
 )
-def preview_markdown_to_storage(markdown_text: str) -> dict:
+def preview_markdown_to_storage(markdown_text: str, enabled_extensions: Optional[List[str]] = None) -> dict:
     client, _ = load_runtime_client()
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.preview_markdown_to_storage(markdown_text)
         return result.model_dump(mode="json")
     finally:
@@ -221,10 +251,13 @@ def preview_markdown_to_storage(markdown_text: str) -> dict:
     name="preview_markdown_file_to_storage",
     description="Преобразовать локальный Markdown-файл в Confluence storage format без публикации.",
 )
-def preview_markdown_file_to_storage(file_path: str) -> dict:
+def preview_markdown_file_to_storage(file_path: str, enabled_extensions: Optional[List[str]] = None) -> dict:
     client, _ = load_runtime_client()
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.preview_markdown_file_to_storage(file_path)
         return result.model_dump(mode="json")
     finally:
@@ -240,6 +273,7 @@ def create_page_from_markdown(
     markdown_text: str,
     parent_id: str,
     space_key: Optional[str] = None,
+    enabled_extensions: Optional[List[str]] = None,
 ) -> dict:
     client, default_space_key = load_runtime_client()
     effective_space_key = space_key or default_space_key
@@ -248,7 +282,10 @@ def create_page_from_markdown(
         raise ValueError("Не указан space_key и отсутствует значение по умолчанию.")
 
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.create_page_from_markdown(
             title=title,
             markdown_text=markdown_text,
@@ -269,6 +306,7 @@ def create_page_from_markdown_file(
     file_path: str,
     parent_id: str,
     space_key: Optional[str] = None,
+    enabled_extensions: Optional[List[str]] = None,
 ) -> dict:
     client, default_space_key = load_runtime_client()
     effective_space_key = space_key or default_space_key
@@ -277,7 +315,10 @@ def create_page_from_markdown_file(
         raise ValueError("Не указан space_key и отсутствует значение по умолчанию.")
 
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.create_page_from_markdown_file(
             title=title,
             file_path=file_path,
@@ -297,10 +338,14 @@ def update_page_from_markdown(
     page_id: str,
     markdown_text: str,
     title: Optional[str] = None,
+    enabled_extensions: Optional[List[str]] = None,
 ) -> dict:
     client, _ = load_runtime_client()
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.update_page_from_markdown(
             page_id=page_id,
             markdown_text=markdown_text,
@@ -319,10 +364,14 @@ def update_page_from_markdown_file(
     page_id: str,
     file_path: str,
     title: Optional[str] = None,
+    enabled_extensions: Optional[List[str]] = None,
 ) -> dict:
     client, _ = load_runtime_client()
     try:
-        importer = ConfluenceMarkdownImporter(client)
+        importer = ConfluenceMarkdownImporter(
+            client,
+            enabled_extensions=enabled_extensions,
+        )
         result = importer.update_page_from_markdown_file(
             page_id=page_id,
             file_path=file_path,

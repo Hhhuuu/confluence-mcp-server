@@ -2,13 +2,15 @@
 
 Отдельная рабочая область для миграции `confluence-page-creator-plugin` на Python.
 
-Для внешних потребителей отдельная инструкция лежит в `EXTERNAL_CONSUMERS.md`.
+## Дополнительная документация
 
-Если проект переносится архивом, пошаговая инструкция лежит в `DEPLOY_FROM_ARCHIVE.md`.
-
-План по развитию экспорта и импорта Markdown лежит в `MARKDOWN_BRIDGE_PLAN.md`.
-
-Отдельная инструкция по запуску в Docker лежит в `DOCKER_RUN.md`.
+- `EXTERNAL_CONSUMERS.md` — инструкция для внешних потребителей MCP-сервера
+- `LOCAL_ENVIRONMENTS.md` — локальная разработка, `.venv` и запуск без Docker
+- `DOCKER_RUN.md` — запуск HTTP API и MCP в Docker
+- `MARKDOWN_BRIDGE_PLAN.md` — план развития markdown bridge
+- `EXTENSIONS.md` — система markdown-расширений, встроенные плагины и инструкция по добавлению своих
+- `KNOWLEDGE_MODEL.md` — модель знаний проекта для анализа, поиска и автоматизации
+- `RAG_ARCHITECTURE.md` — проектная схема индексации и retrieval для RAG
 
 ## Структура
 
