@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from xml.etree import ElementTree as ET
+from uuid import uuid4
 
 from .base import (
     ConfluenceMarkdownExtension,
@@ -30,6 +31,8 @@ class TocExtension(ConfluenceMarkdownExtension):
 
         macro = ET.Element(f"{{{_AC_URI}}}structured-macro")
         macro.attrib[f"{{{_AC_URI}}}name"] = "toc"
+        macro.attrib[f"{{{_AC_URI}}}schema-version"] = "1"
+        macro.attrib[f"{{{_AC_URI}}}macro-id"] = str(uuid4())
         return MarkdownImportTransformResult(handled=True, replacement=macro)
 
     def render_macro(self, renderer, element: ET.Element) -> MarkdownRenderResult:
