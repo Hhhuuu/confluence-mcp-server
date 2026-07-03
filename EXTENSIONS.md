@@ -20,17 +20,20 @@ native macro и storage format.
 
 Назначение:
 
-- поддержка `[TOC]` и `[[TOC]]`
+- поддержка `[TOC]`, `[[TOC]]` и `[TOC maxLevel=3]`
 
 Что делает:
 
 - Markdown -> Confluence: превращает маркер в `toc` macro
-- Confluence -> Markdown: возвращает `[TOC]`
+- если указан `maxLevel`, добавляет внутрь `ac:structured-macro` дочерний элемент `ac:parameter ac:name="maxLevel"`
+- Confluence -> Markdown: возвращает `[TOC]` или `[TOC maxLevel=...]`
 
 Пример:
 
 ```md
 [TOC]
+
+[TOC maxLevel=3]
 ```
 
 ### 2. `admonitions`
