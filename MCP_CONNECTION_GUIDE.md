@@ -15,6 +15,37 @@
 - готовые YAML-примеры под `server`-формат
 - отдельные примеры для `Confluence Markdown Extensions`
 
+## 0. Быстрый путь: автоматическая настройка
+
+Если не хочется проходить весь процесс вручную, можно запустить bootstrap-скрипт:
+
+```bash
+python3 scripts/bootstrap_mcp.py
+```
+
+Что он делает:
+
+- спрашивает `base_url`
+- спрашивает `default_space_key`
+- спрашивает `api_token`
+- создаёт `config/app.yaml`
+- создаёт `secrets/confluence.yaml`
+- генерирует готовые MCP snippets для `Python` и `Docker`
+
+Дополнительно можно попросить его сразу подготовить Python-окружение:
+
+```bash
+python3 scripts/bootstrap_mcp.py --setup-python
+```
+
+Или собрать Docker image:
+
+```bash
+python3 scripts/bootstrap_mcp.py --setup-docker
+```
+
+После этого обычно остаётся только взять готовый путь до `scripts/run_mcp.sh` или `scripts/run_mcp_docker.sh` и вставить его в MCP-конфиг клиента.
+
 ## 1. Что понадобится заранее
 
 Минимально нужны:
@@ -277,7 +308,7 @@ confluence:
 
 ### 4.5. Пример markdown с Confluence-расширениями
 
-Если при публикации включены расширения `toc`, `admonitions`, `code_blocks`, можно использовать такой markdown:
+По умолчанию во встроенном markdown bridge уже включены расширения `toc`, `admonitions`, `code_blocks` и `jira_links`, поэтому можно использовать такой markdown:
 
 ```md
 # Руководство по запуску
@@ -304,12 +335,15 @@ confluence:
 ```python {title="run_example.py"}
 print("hello from confluence extension")
 ```
+
+См. задачу по релизу: [KAN-123](https://jira.example.local/browse/KAN-123)
 ```
 
 Важно:
 
-- эти расширения не включены по умолчанию
-- их нужно явно включать через `enabled_extensions`
+- если нужен стандартный режим, ничего дополнительно включать не надо
+- если нужно ограничить список расширений, можно передать `enabled_extensions`
+- если нужно полностью отключить встроенные расширения, можно передать `enabled_extensions: []`
 - актуальная документация по ним лежит в:
   - `EXTENSIONS.md`
 

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import mimetypes
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+from urllib.parse import urljoin
 
 import httpx
 
@@ -265,6 +266,88 @@ class ConfluenceClient:
         )
         payload = AttachmentsResponse.model_validate(response.json())
         return payload.results[0] if payload.results else None
+
+    def list_attachments(
+        self,
+        page_id: str,
+        *,
+        start: int = 0,
+        limit: int = 100,
+    ) -> AttachmentsResponse:
+        """
+        Получить список вложений страницы.
+
+        Args:
+            page_id: Идентификатор страницы.
+            start: Смещение пагинации.
+            limit: Максимум записей за один запрос.
+
+        Returns:
+            Ответ API со списком вложений.
+        """
+
+        response = self._request(
+            "GET",
+            self._api_path(f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}"),
+            params={
+                "expand": "version",
+                "start": str(start),
+                "limit": str(limit),
+            },
+        )
+        return AttachmentsResponse.model_validate(response.json())
+
+    def download_attachment(
+        self,
+        attachment: AttachmentSummary,
+        output_path: str | Path,
+    ) -> Path:
+        """
+        Скачать бинарные данные вложения на локальный диск.
+
+        Args:
+            attachment: Описание вложения Confluence.
+            output_path: Куда сохранить файл.
+
+        Returns:
+            Путь до сохранённого файла.
+        """
+
+        download_link = attachment.links.download if attachment.links else None
+        if not download_link:
+            raise ConfluenceRequestError(
+                f"У вложения {attachment.title} отсутствует ссылка download."
+            )
+
+        normalized_link = download_link
+        if self._config.deployment == "cloud" and download_link.startswith("/rest/"):
+            normalized_link = f"{self._api_prefix}{download_link}"
+
+        absolute_url = urljoin(
+            f"{self._config.base_url.rstrip('/')}/",
+            normalized_link.lstrip("/"),
+        )
+        try:
+            response = self._client.get(absolute_url)
+        except httpx.HTTPError as exc:
+            raise ConfluenceRequestError(
+                f"Ошибка HTTP при скачивании вложения {attachment.title}: {exc}"
+            ) from exc
+
+        if response.status_code == 401:
+            raise ConfluenceAuthenticationError(
+                "Авторизация в Confluence неуспешна. Проверьте токен или права доступа."
+            )
+        if response.status_code >= 400:
+            raise ConfluenceRequestError(
+                f"Confluence вернул ошибку {response.status_code} при скачивании вложения "
+                f"{attachment.title}: {response.text}"
+            )
+
+        target = Path(output_path).expanduser()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(response.content)
+        return target
 
     def upload_attachment(
         self,

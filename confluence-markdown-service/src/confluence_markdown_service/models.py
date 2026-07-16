@@ -24,6 +24,23 @@ class MarkdownAttachmentResult(BaseModel):
     action: str
 
 
+class MarkdownExportedAttachmentResult(BaseModel):
+    """
+    Информация о вложении, которое было выгружено рядом с Markdown.
+
+    Attributes:
+        filename: Имя вложения.
+        output_path: Путь до локально сохранённого файла.
+        attachment_id: Идентификатор вложения в Confluence.
+        action: Результат операции, например `downloaded` или `skipped`.
+    """
+
+    filename: str
+    output_path: str
+    attachment_id: Optional[str] = None
+    action: str = "downloaded"
+
+
 class MarkdownTreeExportItem(BaseModel):
     """
     Информация об одной выгруженной странице дерева.
@@ -40,6 +57,7 @@ class MarkdownTreeExportItem(BaseModel):
     title: str
     depth: int
     output_path: str
+    attachments: List[MarkdownExportedAttachmentResult] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 
@@ -80,6 +98,8 @@ class MarkdownExportResult(BaseModel):
     space_key: Optional[str] = None
     markdown: str
     output_path: Optional[str] = None
+    attachments_dir: Optional[str] = None
+    attachments: List[MarkdownExportedAttachmentResult] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 

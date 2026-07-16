@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Iterable, Sequence
+from urllib.parse import quote, unquote
 from xml.etree import ElementTree as ET
 
 import markdown as markdown_lib
@@ -22,6 +23,7 @@ from .models import (
 _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
 _MARKDOWN_IMAGE_PATTERN = re.compile(r"(!\[[^\]]*]\()([^)]+)(\))")
+_MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)(\[[^\]]*]\()([^)]+)(\))")
 
 
 @dataclass(frozen=True)
@@ -231,18 +233,17 @@ class ConfluenceMarkdownImporter:
         warnings: list[str] = []
         filename_to_source: dict[str, Path] = {}
 
-        def replace_image(match: re.Match[str]) -> str:
-            raw_target = match.group(2).strip()
-            image_target = self._extract_image_target(raw_target)
-            if not image_target or self._is_remote_or_confluence_target(image_target):
-                return match.group(0)
+        def register_local_target(raw_target: str) -> tuple[str, str] | None:
+            local_target = self._extract_markdown_target(raw_target)
+            if not local_target or self._is_remote_or_confluence_target(local_target):
+                return None
 
-            resolved_path = self._resolve_local_image_path(source_dir, image_target)
+            resolved_path = self._resolve_local_path(source_dir, local_target)
             attachment_name = resolved_path.name
             existing_source = filename_to_source.get(attachment_name)
             if existing_source and existing_source != resolved_path:
                 raise MarkdownBridgeError(
-                    "В одном markdown-файле найдены разные локальные изображения с одинаковым именем "
+                    "В одном markdown-файле найдены разные локальные файлы с одинаковым именем "
                     f"вложения '{attachment_name}': {existing_source} и {resolved_path}. "
                     "Переименуйте один из файлов, чтобы избежать конфликта."
                 )
@@ -255,17 +256,33 @@ class ConfluenceMarkdownImporter:
                 )
             )
             warnings.append(
-                "Локальное изображение "
-                f"{resolved_path} будет загружено во вложения страницы как {attachment_name}."
+                "Локальный файл "
+                f"{resolved_path} будет загружен во вложения страницы как {attachment_name}."
             )
-            return f"{match.group(1)}attachment:{attachment_name}{match.group(3)}"
+            quoted_name = quote(attachment_name)
+            return attachment_name, f"attachment:{quoted_name}"
+
+        def replace_image(match: re.Match[str]) -> str:
+            registered = register_local_target(match.group(2).strip())
+            if registered is None:
+                return match.group(0)
+            _, attachment_target = registered
+            return f"{match.group(1)}{attachment_target}{match.group(3)}"
+
+        def replace_link(match: re.Match[str]) -> str:
+            registered = register_local_target(match.group(2).strip())
+            if registered is None:
+                return match.group(0)
+            _, attachment_target = registered
+            return f"{match.group(1)}{attachment_target}{match.group(3)}"
 
         prepared = _MARKDOWN_IMAGE_PATTERN.sub(replace_image, markdown_text)
+        prepared = _MARKDOWN_LINK_PATTERN.sub(replace_link, prepared)
         unique_attachments = list(self._deduplicate_attachments(attachments))
         return prepared, unique_attachments, warnings
 
     @staticmethod
-    def _extract_image_target(raw_target: str) -> str:
+    def _extract_markdown_target(raw_target: str) -> str:
         if not raw_target:
             return ""
 
@@ -288,19 +305,19 @@ class ConfluenceMarkdownImporter:
         )
 
     @staticmethod
-    def _resolve_local_image_path(source_dir: Path, target: str) -> Path:
-        candidate = Path(target).expanduser()
+    def _resolve_local_path(source_dir: Path, target: str) -> Path:
+        candidate = Path(unquote(target)).expanduser()
         if not candidate.is_absolute():
             candidate = source_dir / candidate
         candidate = candidate.resolve()
 
         if not candidate.exists():
             raise MarkdownBridgeError(
-                f"Не найден локальный файл изображения из markdown: {candidate}"
+                f"Не найден локальный файл из markdown: {candidate}"
             )
         if not candidate.is_file():
             raise MarkdownBridgeError(
-                f"Путь локального изображения не является файлом: {candidate}"
+                f"Путь локального файла не является файлом: {candidate}"
             )
         return candidate
 
@@ -379,6 +396,12 @@ class ConfluenceMarkdownImporter:
                 self._replace_element_in_parent(element, image)
                 return
 
+        if name == "a":
+            link = self._convert_anchor_to_confluence_link(element)
+            if link is not None:
+                self._replace_element_in_parent(element, link)
+                return
+
     def _convert_img_to_confluence_image(
         self,
         element: ET.Element,
@@ -401,6 +424,30 @@ class ConfluenceMarkdownImporter:
         resource = ET.SubElement(image, f"{{{_RI_URI}}}url")
         resource.attrib[f"{{{_RI_URI}}}value"] = src
         return image
+
+    def _convert_anchor_to_confluence_link(
+        self,
+        element: ET.Element,
+    ) -> ET.Element | None:
+        href = element.attrib.get("href", "").strip()
+        if not href.startswith("attachment:"):
+            return None
+
+        filename = unquote(href.removeprefix("attachment:"))
+        if not filename:
+            self._warn("Markdown-ссылка на вложение без имени файла была пропущена.")
+            return None
+
+        link = ET.Element(f"{{{_AC_URI}}}link")
+        attachment = ET.SubElement(link, f"{{{_RI_URI}}}attachment")
+        attachment.attrib[f"{{{_RI_URI}}}filename"] = filename
+
+        link_text = self._collapse_text(element).strip()
+        if link_text and link_text != href:
+            body = ET.SubElement(link, f"{{{_AC_URI}}}plain-text-link-body")
+            body.text = link_text
+
+        return link
 
     def _replace_element_in_parent(self, old: ET.Element, new: ET.Element) -> None:
         parent = self._find_parent(old)

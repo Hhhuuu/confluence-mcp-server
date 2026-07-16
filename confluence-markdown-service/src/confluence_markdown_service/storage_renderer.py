@@ -362,6 +362,11 @@ class StorageMarkdownRenderer:
         return self._render_inline(element)
 
     def _render_confluence_link(self, element: ET.Element) -> str:
+        for extension in self._registry.extensions:
+            result = extension.render_confluence_link(self, element)
+            if result.handled:
+                return result.markdown
+
         text = ""
         target = None
 
@@ -380,6 +385,14 @@ class StorageMarkdownRenderer:
         if target:
             return f"[{text}]({target})"
         return text
+
+    @staticmethod
+    def _local_name(tag: str) -> str:
+        return local_name(tag)
+
+    @staticmethod
+    def _namespace_uri(tag: str) -> str:
+        return namespace_uri(tag)
 
     def _resolve_confluence_resource_target(self, element: ET.Element) -> str | None:
         for child in element:

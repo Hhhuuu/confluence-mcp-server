@@ -6,13 +6,15 @@
 добавлять специальные markdown-конструкции и отображать их в Confluence через
 native macro и storage format.
 
-Расширения подключаются **опционально**:
+Встроенные расширения подключаются **по умолчанию**:
 
 - через Python API
 - через HTTP API
 - через MCP tools
 
 Базовый markdown bridge продолжает работать и без них.
+Если нужно полностью отключить встроенные расширения, можно передать пустой
+список `enabled_extensions=[]`.
 
 ## Встроенные расширения
 
@@ -95,7 +97,46 @@ print("hello")
 - Confluence -> Markdown:
   - `code` macro с title и language возвращается в fenced code block
 
-## Как включить расширения
+### 4. `jira_links`
+
+Назначение:
+
+- поддержка Jira-ссылок в обычном markdown-формате
+
+Поддерживаемый синтаксис:
+
+```md
+[KAN-123](https://jira.example.local/browse/KAN-123)
+
+[Задача по релизу](https://jira.example.local/browse/KAN-456)
+```
+
+Что делает:
+
+- Markdown -> Confluence:
+  - преобразует ссылку в native Confluence link с `ri:url`
+- Confluence -> Markdown:
+  - возвращает обычную markdown-ссылку
+  - если текст ссылки отсутствует, использует ключ задачи
+
+## Как управлять расширениями
+
+По умолчанию уже включены все встроенные расширения:
+
+- `toc`
+- `admonitions`
+- `code_blocks`
+- `jira_links`
+
+Если этого достаточно, `enabled_extensions` можно вообще не передавать.
+
+Если нужно оставить только часть расширений, передай явный список.
+
+Если нужно отключить все встроенные расширения, передай пустой список:
+
+```python
+enabled_extensions=[]
+```
 
 ### Через Python API
 
@@ -104,7 +145,6 @@ from confluence_markdown_service import ConfluenceMarkdownImporter
 
 importer = ConfluenceMarkdownImporter(
     client,
-    enabled_extensions=["toc", "admonitions", "code_blocks"],
 )
 ```
 
@@ -115,7 +155,15 @@ from confluence_markdown_service import ConfluenceMarkdownExporter
 
 exporter = ConfluenceMarkdownExporter(
     client,
-    enabled_extensions=["toc", "admonitions", "code_blocks"],
+)
+```
+
+Пример явного ограничения только двумя расширениями:
+
+```python
+importer = ConfluenceMarkdownImporter(
+    client,
+    enabled_extensions=["toc", "jira_links"],
 )
 ```
 
@@ -125,8 +173,7 @@ Preview markdown:
 
 ```json
 {
-  "markdown": "> [!WARNING]\n> Важное предупреждение",
-  "enabled_extensions": ["admonitions"]
+  "markdown": "> [!WARNING]\n> Важное предупреждение"
 }
 ```
 
@@ -137,15 +184,20 @@ Preview markdown:
   "title": "Runbook",
   "parent_id": "12345",
   "space_key": "DOC",
-  "markdown": "```python {title=\"example.py\"}\nprint(\"hi\")\n```",
-  "enabled_extensions": ["code_blocks"]
+  "markdown": "```python {title=\"example.py\"}\nprint(\"hi\")\n```"
 }
 ```
 
 Для выгрузки страницы в markdown через GET:
 
 ```text
-/api/v1/page/163939/markdown?enabled_extensions=toc,admonitions,code_blocks
+/api/v1/page/163939/markdown
+```
+
+Если нужно вручную ограничить набор расширений:
+
+```text
+/api/v1/page/163939/markdown?enabled_extensions=toc,jira_links
 ```
 
 ### Через MCP
@@ -156,8 +208,7 @@ Preview markdown:
 {
   "tool": "preview_markdown_to_storage",
   "arguments": {
-    "markdown_text": "> [!NOTE]\n> Полезная справка",
-    "enabled_extensions": ["admonitions"]
+    "markdown_text": "> [!NOTE]\n> Полезная справка"
   }
 }
 ```
@@ -171,8 +222,19 @@ Preview markdown:
     "title": "Example",
     "parent_id": "12345",
     "space_key": "DOC",
-    "markdown_text": "```python {title=\"example.py\"}\nprint(\"hi\")\n```",
-    "enabled_extensions": ["code_blocks"]
+    "markdown_text": "```python {title=\"example.py\"}\nprint(\"hi\")\n```"
+  }
+}
+```
+
+Если нужно отключить встроенные расширения:
+
+```json
+{
+  "tool": "preview_markdown_to_storage",
+  "arguments": {
+    "markdown_text": "Простой текст без расширений",
+    "enabled_extensions": []
   }
 }
 ```

@@ -10,6 +10,7 @@
 - получать информацию о пользователе и пространстве
 - искать и читать страницы
 - выгружать страницы в Markdown
+- выгружать вложения страницы рядом с Markdown в file-based сценариях
 - публиковать Markdown в Confluence
 - строить план создания иерархии страниц
 - создавать вложенные страницы в Confluence
@@ -38,6 +39,7 @@
 
 - `export_page_to_markdown`
 - `export_page_to_markdown_file`
+- `export_page_tree_to_markdown_files`
 - `preview_markdown_to_storage`
 - `preview_markdown_file_to_storage`
 - `create_page_from_markdown`
@@ -45,6 +47,19 @@
 - `update_page_from_markdown`
 - `update_page_from_markdown_file`
 - `list_markdown_extensions`
+
+File-based markdown-сценарии работают как bundle:
+
+- `README.md`
+- `attachments/` рядом с ним
+
+Это позволяет переносить не только текст страницы, но и связанные вложения:
+
+- изображения
+- pdf
+- docx
+- xlsx
+- другие attachment-файлы страницы
 
 ### Работа с иерархией
 
@@ -389,7 +404,7 @@ confluence:
 Вход:
 
 - `page_id`
-- `enabled_extensions` — необязательный список расширений, например `["toc", "admonitions", "code_blocks"]`
+- `enabled_extensions` — необязательный список расширений, например `["toc", "admonitions", "code_blocks", "jira_links"]`
 
 Выход:
 
@@ -765,11 +780,14 @@ Root/Team // Dev/Runbook
 Для markdown-сценариев можно дополнительно передавать:
 
 - `enabled_extensions`
+  - если параметр не передан, встроенные расширения включены по умолчанию
+  - если передан пустой список `[]`, встроенные расширения отключаются
 
 Поддерживаемые встроенные расширения:
 
 - `toc`
 - `admonitions`
 - `code_blocks`
+- `jira_links`
 
 Подробное описание и примеры лежат в `EXTENSIONS.md`.

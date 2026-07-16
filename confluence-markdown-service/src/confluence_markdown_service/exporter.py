@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Sequence
+from urllib.parse import quote
 
 from confluence_client import ConfluenceClient
 
@@ -12,11 +14,20 @@ from .extensions import ConfluenceMarkdownExtension
 from .exceptions import MarkdownBridgeError
 from .models import (
     MarkdownExportResult,
+    MarkdownExportedAttachmentResult,
     MarkdownTreeExportItem,
     MarkdownTreeExportResult,
 )
 from .storage_normalizer import parse_storage_document
 from .storage_renderer import StorageMarkdownRenderer
+
+_MARKDOWN_TARGET_PATTERN = re.compile(r"(?P<prefix>!?\[[^\]]*]\()(?P<target>[^)]+)(?P<suffix>\))")
+
+
+@dataclass(frozen=True)
+class AttachmentReference:
+    filename: str
+    is_image: bool
 
 
 class ConfluenceMarkdownExporter:
@@ -43,7 +54,9 @@ class ConfluenceMarkdownExporter:
         """
 
         self._client = client
-        self._enabled_extensions = list(enabled_extensions or [])
+        self._enabled_extensions = (
+            list(enabled_extensions) if enabled_extensions is not None else None
+        )
         self._extra_extensions = list(extra_extensions or [])
 
     def export_page_to_markdown(self, page_id: str) -> MarkdownExportResult:
@@ -129,7 +142,11 @@ class ConfluenceMarkdownExporter:
         export_result = self.export_page_to_markdown(page_id)
         target_dir.mkdir(parents=True, exist_ok=True)
         output_path = target_dir / "README.md"
-        output_path.write_text(export_result.markdown, encoding="utf-8")
+        export_result = self._materialize_markdown_bundle(
+            page_id=page_id,
+            export_result=export_result,
+            output_path=output_path,
+        )
 
         result.items.append(
             MarkdownTreeExportItem(
@@ -137,6 +154,7 @@ class ConfluenceMarkdownExporter:
                 title=export_result.title,
                 depth=depth,
                 output_path=str(output_path),
+                attachments=export_result.attachments,
                 warnings=export_result.warnings,
             )
         )
@@ -186,6 +204,135 @@ class ConfluenceMarkdownExporter:
             slug = "page"
         return f"{slug}--{page_id}"
 
+    def _materialize_markdown_bundle(
+        self,
+        *,
+        page_id: str,
+        export_result: MarkdownExportResult,
+        output_path: Path,
+    ) -> MarkdownExportResult:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        references = self._collect_attachment_references(export_result.markdown)
+        attachments_dir = output_path.parent / "attachments"
+        attachments, attachment_warnings = self._download_referenced_attachments(
+            page_id,
+            references,
+            attachments_dir,
+        )
+        rewritten_markdown = self._rewrite_attachment_targets(
+            export_result.markdown,
+            attachments_dir_name=attachments_dir.name,
+            available_filenames={attachment.filename for attachment in attachments},
+        )
+
+        output_path.write_text(rewritten_markdown, encoding="utf-8")
+        export_result.markdown = rewritten_markdown
+        export_result.output_path = str(output_path)
+        if attachments:
+            export_result.attachments_dir = str(attachments_dir)
+        export_result.attachments = attachments
+        export_result.warnings.extend(attachment_warnings)
+        return export_result
+
+    def _collect_attachment_references(self, markdown_text: str) -> list[AttachmentReference]:
+        references: list[AttachmentReference] = []
+        seen: set[tuple[str, bool]] = set()
+        for match in _MARKDOWN_TARGET_PATTERN.finditer(markdown_text):
+            target = match.group("target").strip()
+            if not target.startswith("attachment:"):
+                continue
+            filename = target.removeprefix("attachment:")
+            if not filename:
+                continue
+            reference = AttachmentReference(
+                filename=filename,
+                is_image=match.group("prefix").startswith("!["),
+            )
+            key = (reference.filename, reference.is_image)
+            if key in seen:
+                continue
+            seen.add(key)
+            references.append(reference)
+        return references
+
+    def _download_referenced_attachments(
+        self,
+        page_id: str,
+        references: list[AttachmentReference],
+        attachments_dir: Path,
+    ) -> tuple[list[MarkdownExportedAttachmentResult], list[str]]:
+        if not references:
+            return [], []
+
+        attachment_map = self._list_attachments_by_filename(page_id)
+        exported: list[MarkdownExportedAttachmentResult] = []
+        warnings: list[str] = []
+
+        for reference in references:
+            attachment = attachment_map.get(reference.filename)
+            if attachment is None:
+                warnings.append(
+                    f"Во вложениях страницы не найден файл {reference.filename}, "
+                    "поэтому ссылка в markdown оставлена в формате attachment:..."
+                )
+                continue
+
+            attachments_dir.mkdir(parents=True, exist_ok=True)
+            output_path = attachments_dir / reference.filename
+            saved_path = self._client.download_attachment(attachment, output_path)
+            exported.append(
+                MarkdownExportedAttachmentResult(
+                    filename=reference.filename,
+                    output_path=str(saved_path),
+                    attachment_id=attachment.id,
+                    action="downloaded",
+                )
+            )
+
+        return exported, warnings
+
+    def _list_attachments_by_filename(self, page_id: str) -> dict[str, object]:
+        attachment_map: dict[str, object] = {}
+        start = 0
+        limit = 100
+        while True:
+            response = self._client.list_attachments(page_id=page_id, start=start, limit=limit)
+            for attachment in response.results:
+                attachment_map[attachment.title] = attachment
+
+            batch_size = len(response.results)
+            if batch_size == 0:
+                return attachment_map
+
+            next_link = response.links.next if response.links else None
+            if next_link:
+                start += batch_size
+                continue
+
+            if response.limit and batch_size >= response.limit:
+                start += batch_size
+                continue
+            return attachment_map
+
+    @staticmethod
+    def _rewrite_attachment_targets(
+        markdown_text: str,
+        *,
+        attachments_dir_name: str,
+        available_filenames: set[str],
+    ) -> str:
+        def replace(match: re.Match[str]) -> str:
+            target = match.group("target").strip()
+            if not target.startswith("attachment:"):
+                return match.group(0)
+            filename = target.removeprefix("attachment:")
+            if filename not in available_filenames:
+                return match.group(0)
+            relative_target = f"./{attachments_dir_name}/{quote(filename)}"
+            return f"{match.group('prefix')}{relative_target}{match.group('suffix')}"
+
+        return _MARKDOWN_TARGET_PATTERN.sub(replace, markdown_text)
+
 
 def export_page_to_markdown(
     client: ConfluenceClient,
@@ -227,10 +374,15 @@ def export_page_to_markdown_file(
         extra_extensions=extra_extensions,
     ).export_page_to_markdown(page_id)
     path = Path(output_path).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(result.markdown, encoding="utf-8")
-    result.output_path = str(path)
-    return result
+    return ConfluenceMarkdownExporter(
+        client,
+        enabled_extensions=enabled_extensions,
+        extra_extensions=extra_extensions,
+    )._materialize_markdown_bundle(
+        page_id=page_id,
+        export_result=result,
+        output_path=path,
+    )
 
 
 def export_page_tree_to_markdown_files(

@@ -8,13 +8,17 @@ from ..exceptions import MarkdownBridgeError
 from .admonitions import AdmonitionsExtension
 from .base import ConfluenceMarkdownExtension, ExtensionInfo
 from .code_blocks import CodeBlocksExtension
+from .jira_links import JiraLinksExtension
 from .toc import TocExtension
 
 _BUILTIN_EXTENSION_TYPES = {
     TocExtension.name: TocExtension,
     AdmonitionsExtension.name: AdmonitionsExtension,
     CodeBlocksExtension.name: CodeBlocksExtension,
+    JiraLinksExtension.name: JiraLinksExtension,
 }
+
+_DEFAULT_BUILTIN_EXTENSION_NAMES = list(_BUILTIN_EXTENSION_TYPES.keys())
 
 
 class MarkdownExtensionRegistry:
@@ -51,7 +55,8 @@ class MarkdownExtensionRegistry:
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
     ) -> "MarkdownExtensionRegistry":
         extensions: list[ConfluenceMarkdownExtension] = []
-        for name in enabled_extensions or []:
+        builtin_names = _DEFAULT_BUILTIN_EXTENSION_NAMES if enabled_extensions is None else list(enabled_extensions)
+        for name in builtin_names:
             extension_type = _BUILTIN_EXTENSION_TYPES.get(name)
             if extension_type is None:
                 supported = ", ".join(sorted(_BUILTIN_EXTENSION_TYPES))

@@ -138,7 +138,20 @@ docker run --rm -p 8000:8000 \
 
 Этот режим нужен, если MCP-клиент запускает сервер как локальную команду.
 
-Команда:
+Рекомендуемый путь — использовать host-side wrapper:
+
+```bash
+./scripts/run_mcp_docker.sh
+```
+
+Что делает wrapper:
+
+- проверяет наличие `docker`
+- подхватывает `config/app.yaml`
+- подхватывает `secrets/confluence.yaml`
+- запускает контейнер в `mcp-stdio` режиме
+
+Если нужно, всё ещё можно вызвать контейнер и вручную:
 
 ```bash
 docker run --rm -i \
@@ -150,9 +163,9 @@ docker run --rm -i \
 
 ## 7. Примеры подключения MCP-клиента через Docker
 
-### Вариант 1. MCP stdio через `docker run`
+### Вариант 1. MCP stdio через wrapper-скрипт
 
-Подходит для клиентов, которые умеют запускать локальную команду.
+Подходит для клиентов, которые умеют запускать локальную команду. Это рекомендуемый вариант.
 
 Пример конфигурации:
 
@@ -160,25 +173,15 @@ docker run --rm -i \
 {
   "mcpServers": {
     "confluence-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "-e",
-        "PAGECREATOR_RUNTIME_MODE=mcp-stdio",
-        "-v",
-        "./config:/app/config:ro",
-        "-v",
-        "./secrets:/app/secrets:ro",
-        "confluence-mcp:local"
-      ]
+      "command": "./scripts/run_mcp_docker.sh"
     }
   }
 }
 ```
 
-Если MCP-клиент не любит относительные пути, используй абсолютные пути для volume mounts.
+Если клиент не понимает относительный путь, используй абсолютный путь до `scripts/run_mcp_docker.sh`.
+
+Альтернативный вариант — передавать в клиент длинный `docker run ...`, но это менее удобно из-за volume mounts и путей.
 
 ### Вариант 2. MCP over HTTP
 

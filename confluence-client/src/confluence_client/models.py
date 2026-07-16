@@ -51,6 +51,7 @@ class LinksInfo(ConfluenceModel):
     self: Optional[str] = None
     webui: Optional[str] = None
     base: Optional[str] = None
+    download: Optional[str] = None
 
 
 class PageSummary(ConfluenceModel):

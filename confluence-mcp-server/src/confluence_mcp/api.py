@@ -76,7 +76,7 @@ class MarkdownPreviewRequest(BaseModel):
     """
 
     markdown: str = ""
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownCreateRequest(BaseModel):
@@ -94,7 +94,7 @@ class MarkdownCreateRequest(BaseModel):
     markdown: str = ""
     parent_id: str
     space_key: Optional[str] = None
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownUpdateRequest(BaseModel):
@@ -110,14 +110,14 @@ class MarkdownUpdateRequest(BaseModel):
     page_id: str
     markdown: str = ""
     title: Optional[str] = None
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownFilePreviewRequest(BaseModel):
     """Входные данные для preview markdown-файла."""
 
     file_path: str
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownFileCreateRequest(BaseModel):
@@ -127,7 +127,7 @@ class MarkdownFileCreateRequest(BaseModel):
     file_path: str
     parent_id: str
     space_key: Optional[str] = None
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownFileUpdateRequest(BaseModel):
@@ -136,21 +136,21 @@ class MarkdownFileUpdateRequest(BaseModel):
     page_id: str
     file_path: str
     title: Optional[str] = None
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownFileExportRequest(BaseModel):
     """Входные данные для выгрузки страницы в markdown-файл."""
 
     output_path: str
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 class MarkdownTreeExportRequest(BaseModel):
     """Входные данные для выгрузки дерева страниц в markdown-файлы."""
 
     output_dir: str
-    enabled_extensions: List[str] = Field(default_factory=list)
+    enabled_extensions: Optional[List[str]] = None
 
 
 @app.get("/api/v1/markdown/extensions")
