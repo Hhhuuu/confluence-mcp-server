@@ -128,15 +128,21 @@ print("hello")
 Поддерживаемый синтаксис:
 
 ```md
-<time datetime="2026-07-20"></time>
+[date:2026-07-20]
+
+<time datetime="2026-07-20">2026-07-20</time>
+
+<time datetime="2026-07-20"/>
 ```
 
 Что делает:
 
 - Markdown -> Confluence:
-  - сохраняет дату в storage format Confluence
+  - понимает короткий синтаксис `[date:YYYY-MM-DD]`
+  - понимает полный тег `time`
+  - понимает self-closing тег `time`
 - Confluence -> Markdown:
-  - возвращает `<time datetime="YYYY-MM-DD"></time>`
+  - всегда возвращает `<time datetime="YYYY-MM-DD">YYYY-MM-DD</time>`
 
 ### 6. `status_element`
 

@@ -336,7 +336,7 @@ confluence:
 print("hello from confluence extension")
 ```
 
-Дата релиза: <time datetime="2026-07-20"></time>
+Дата релиза: [date:2026-07-20]
 
 Статус: <status color="Green" subtle="true">Готово</status>
 
