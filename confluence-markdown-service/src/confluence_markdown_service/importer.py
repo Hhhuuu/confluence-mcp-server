@@ -24,6 +24,15 @@ _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
 _MARKDOWN_IMAGE_PATTERN = re.compile(r"(!\[[^\]]*]\()([^)]+)(\))")
 _MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)(\[[^\]]*]\()([^)]+)(\))")
+_ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
+    "a": {"href", "title"},
+    "img": {"src", "alt", "title", "width", "height"},
+    "code": {"class", "title"},
+    "pre": {"data-code-title", "data-code-language"},
+    "blockquote": {"data-admonition"},
+    "th": {"colspan", "rowspan"},
+    "td": {"colspan", "rowspan"},
+}
 
 
 @dataclass(frozen=True)
@@ -402,6 +411,26 @@ class ConfluenceMarkdownImporter:
                 self._replace_element_in_parent(element, link)
                 return
 
+        if name == "input":
+            replacement = self._convert_input_element(element)
+            if replacement is not None:
+                self._replace_element_in_parent(element, replacement)
+                return
+
+        if name == "details":
+            replacement = self._convert_details_element(element)
+            if replacement is not None:
+                self._replace_element_in_parent(element, replacement)
+                return
+
+        if name == "summary":
+            replacement = self._convert_summary_element(element)
+            if replacement is not None:
+                self._replace_element_in_parent(element, replacement)
+                return
+
+        self._sanitize_html_element_attributes(element)
+
     def _convert_img_to_confluence_image(
         self,
         element: ET.Element,
@@ -448,6 +477,65 @@ class ConfluenceMarkdownImporter:
             body.text = link_text
 
         return link
+
+    def _convert_input_element(self, element: ET.Element) -> ET.Element | None:
+        input_type = (element.attrib.get("type") or "").strip().lower()
+        if input_type != "checkbox":
+            return None
+
+        checked = (element.attrib.get("checked") or "").strip().lower()
+        marker = "[x]" if checked in {"checked", "true", "1", "yes", "on"} else "[ ]"
+
+        span = ET.Element("span")
+        span.text = marker
+        return span
+
+    def _convert_details_element(self, element: ET.Element) -> ET.Element | None:
+        container = ET.Element("div")
+        has_content = False
+
+        for child in list(element):
+            element.remove(child)
+            container.append(child)
+            has_content = True
+
+        details_text = (element.text or "").strip()
+        if details_text:
+            paragraph = ET.Element("p")
+            paragraph.text = details_text
+            container.insert(0, paragraph)
+            has_content = True
+
+        return container if has_content else None
+
+    def _convert_summary_element(self, element: ET.Element) -> ET.Element | None:
+        text = self._collapse_text(element).strip()
+        if not text:
+            return None
+
+        paragraph = ET.Element("p")
+        strong = ET.SubElement(paragraph, "strong")
+        strong.text = text
+        return paragraph
+
+    def _sanitize_html_element_attributes(self, element: ET.Element) -> None:
+        if self._namespace_uri(element.tag):
+            return
+
+        allowed = _ALLOWED_HTML_ATTRIBUTES.get(self._local_name(element.tag), set())
+        if not element.attrib:
+            return
+
+        original_keys = list(element.attrib.keys())
+        for key in original_keys:
+            if key not in allowed:
+                element.attrib.pop(key, None)
+
+        if original_keys and set(original_keys) != set(element.attrib):
+            self._warn(
+                f"У HTML-элемента <{self._local_name(element.tag)}> были удалены неподдерживаемые "
+                "атрибуты перед публикацией в Confluence."
+            )
 
     def _replace_element_in_parent(self, old: ET.Element, new: ET.Element) -> None:
         parent = self._find_parent(old)
@@ -520,6 +608,12 @@ class ConfluenceMarkdownImporter:
         if tag.startswith("{") and "}" in tag:
             return tag.split("}", 1)[1]
         return tag
+
+    @staticmethod
+    def _namespace_uri(tag: str) -> str:
+        if tag.startswith("{") and "}" in tag:
+            return tag[1:].split("}", 1)[0]
+        return ""
 
 
 def preview_markdown_to_storage(
