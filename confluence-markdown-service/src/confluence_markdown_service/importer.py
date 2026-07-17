@@ -24,6 +24,10 @@ _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
 _MARKDOWN_IMAGE_PATTERN = re.compile(r"(!\[[^\]]*]\()([^)]+)(\))")
 _MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)(\[[^\]]*]\()([^)]+)(\))")
+_HTML_IMAGE_SRC_PATTERN = re.compile(
+    r'(?P<prefix><img\b[^>]*?\bsrc=")(?P<target>[^"]+)(?P<suffix>"[^>]*?/?>)',
+    re.IGNORECASE,
+)
 _ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "a": {"href", "title"},
     "img": {"src", "alt", "title", "width", "height"},
@@ -295,8 +299,16 @@ class ConfluenceMarkdownImporter:
             _, attachment_target = registered
             return f"{match.group(1)}{attachment_target}{match.group(3)}"
 
+        def replace_html_image(match: re.Match[str]) -> str:
+            registered = register_local_target(match.group("target").strip())
+            if registered is None:
+                return match.group(0)
+            _, attachment_target = registered
+            return f'{match.group("prefix")}{attachment_target}{match.group("suffix")}'
+
         prepared = _MARKDOWN_IMAGE_PATTERN.sub(replace_image, markdown_text)
         prepared = _MARKDOWN_LINK_PATTERN.sub(replace_link, prepared)
+        prepared = _HTML_IMAGE_SRC_PATTERN.sub(replace_html_image, prepared)
         unique_attachments = list(self._deduplicate_attachments(attachments))
         return prepared, unique_attachments, warnings
 
@@ -454,6 +466,12 @@ class ConfluenceMarkdownImporter:
         alt = element.attrib.get("alt", "").strip()
         if alt:
             image.attrib[f"{{{_AC_URI}}}alt"] = alt
+        width = (element.attrib.get("width") or "").strip()
+        height = (element.attrib.get("height") or "").strip()
+        if width:
+            image.attrib[f"{{{_AC_URI}}}width"] = width
+        if height:
+            image.attrib[f"{{{_AC_URI}}}height"] = height
 
         if src.startswith("attachment:"):
             attachment = ET.SubElement(image, f"{{{_RI_URI}}}attachment")

@@ -22,6 +22,10 @@ from .storage_normalizer import parse_storage_document
 from .storage_renderer import StorageMarkdownRenderer
 
 _MARKDOWN_TARGET_PATTERN = re.compile(r"(?P<prefix>!?\[[^\]]*]\()(?P<target>[^)]+)(?P<suffix>\))")
+_HTML_IMAGE_SRC_PATTERN = re.compile(
+    r'(?P<prefix><img\b[^>]*?\bsrc=")(?P<target>[^"]+)(?P<suffix>"[^>]*?/?>)',
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -259,6 +263,20 @@ class ConfluenceMarkdownExporter:
                 continue
             seen.add(key)
             references.append(reference)
+
+        for match in _HTML_IMAGE_SRC_PATTERN.finditer(markdown_text):
+            target = match.group("target").strip()
+            if not target.startswith("attachment:"):
+                continue
+            filename = target.removeprefix("attachment:")
+            if not filename:
+                continue
+            reference = AttachmentReference(filename=filename, is_image=True)
+            key = (reference.filename, reference.is_image)
+            if key in seen:
+                continue
+            seen.add(key)
+            references.append(reference)
         return references
 
     def _download_referenced_attachments(
@@ -337,7 +355,19 @@ class ConfluenceMarkdownExporter:
             relative_target = f"./{attachments_dir_name}/{quote(filename)}"
             return f"{match.group('prefix')}{relative_target}{match.group('suffix')}"
 
-        return _MARKDOWN_TARGET_PATTERN.sub(replace, markdown_text)
+        rewritten = _MARKDOWN_TARGET_PATTERN.sub(replace, markdown_text)
+
+        def replace_html_image(match: re.Match[str]) -> str:
+            target = match.group("target").strip()
+            if not target.startswith("attachment:"):
+                return match.group(0)
+            filename = target.removeprefix("attachment:")
+            if filename not in available_filenames:
+                return match.group(0)
+            relative_target = f"./{attachments_dir_name}/{quote(filename)}"
+            return f'{match.group("prefix")}{relative_target}{match.group("suffix")}'
+
+        return _HTML_IMAGE_SRC_PATTERN.sub(replace_html_image, rewritten)
 
 
 def export_page_to_markdown(

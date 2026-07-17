@@ -544,7 +544,8 @@ class StorageMarkdownRenderer:
             return ""
         alt = html.escape(target.removeprefix("attachment:") if target.startswith("attachment:") else target.split("/")[-1], quote=True)
         escaped_target = html.escape(target, quote=True)
-        return f'<img src="{escaped_target}" alt="{alt}"/>'
+        attrs = self._image_dimension_attrs(element)
+        return f'<img src="{escaped_target}" alt="{alt}"{attrs}/>'
 
     def _render_list_as_html(self, element: ET.Element, *, ordered: bool) -> str:
         tag = "ol" if ordered else "ul"
@@ -564,6 +565,11 @@ class StorageMarkdownRenderer:
         alt = target.split("/")[-1]
         if target.startswith("attachment:"):
             alt = target.removeprefix("attachment:")
+        if self._image_has_dimensions(element):
+            escaped_target = html.escape(target, quote=True)
+            escaped_alt = html.escape(alt, quote=True)
+            attrs = self._image_dimension_attrs(element)
+            return f'<img src="{escaped_target}" alt="{escaped_alt}"{attrs}/>'
         return f"![{alt}]({target})"
 
     def _render_inline(self, element: ET.Element) -> str:
@@ -683,6 +689,34 @@ class StorageMarkdownRenderer:
             return f"page:{title}" if title else None
 
         return None
+
+    @staticmethod
+    def _image_has_dimensions(element: ET.Element) -> bool:
+        return bool(
+            attr_value(element, "ac:width")
+            or element.attrib.get(f"{{{_AC_URI}}}width")
+            or attr_value(element, "ac:height")
+            or element.attrib.get(f"{{{_AC_URI}}}height")
+        )
+
+    @staticmethod
+    def _image_dimension_attrs(element: ET.Element) -> str:
+        width = (
+            attr_value(element, "ac:width")
+            or element.attrib.get(f"{{{_AC_URI}}}width")
+            or ""
+        ).strip()
+        height = (
+            attr_value(element, "ac:height")
+            or element.attrib.get(f"{{{_AC_URI}}}height")
+            or ""
+        ).strip()
+        attrs: list[str] = []
+        if width:
+            attrs.append(f' width="{html.escape(width, quote=True)}"')
+        if height:
+            attrs.append(f' height="{html.escape(height, quote=True)}"')
+        return "".join(attrs)
 
     def _macro_parameter(self, element: ET.Element, name: str) -> str:
         for child in element:
