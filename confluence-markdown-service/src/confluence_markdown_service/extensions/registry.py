@@ -8,14 +8,18 @@ from ..exceptions import MarkdownBridgeError
 from .admonitions import AdmonitionsExtension
 from .base import ConfluenceMarkdownExtension, ExtensionInfo
 from .code_blocks import CodeBlocksExtension
+from .date_element import DateElementExtension
 from .jira_links import JiraLinksExtension
+from .status_element import StatusElementExtension
 from .toc import TocExtension
 
 _BUILTIN_EXTENSION_TYPES = {
     TocExtension.name: TocExtension,
     AdmonitionsExtension.name: AdmonitionsExtension,
     CodeBlocksExtension.name: CodeBlocksExtension,
+    DateElementExtension.name: DateElementExtension,
     JiraLinksExtension.name: JiraLinksExtension,
+    StatusElementExtension.name: StatusElementExtension,
 }
 
 _DEFAULT_BUILTIN_EXTENSION_NAMES = list(_BUILTIN_EXTENSION_TYPES.keys())

@@ -119,6 +119,44 @@ print("hello")
   - возвращает обычную markdown-ссылку
   - если текст ссылки отсутствует, использует ключ задачи
 
+### 5. `date_element`
+
+Назначение:
+
+- поддержка даты через HTML-тег `time`
+
+Поддерживаемый синтаксис:
+
+```md
+<time datetime="2026-07-20"></time>
+```
+
+Что делает:
+
+- Markdown -> Confluence:
+  - сохраняет дату в storage format Confluence
+- Confluence -> Markdown:
+  - возвращает `<time datetime="YYYY-MM-DD"></time>`
+
+### 6. `status_element`
+
+Назначение:
+
+- поддержка цветного статуса Confluence
+
+Поддерживаемый синтаксис:
+
+```md
+<status color="Green" subtle="true">Готово</status>
+```
+
+Что делает:
+
+- Markdown -> Confluence:
+  - преобразует тег в native `status` macro
+- Confluence -> Markdown:
+  - возвращает `<status color="..." subtle="...">...</status>`
+
 ## Как управлять расширениями
 
 По умолчанию уже включены все встроенные расширения:
@@ -126,7 +164,9 @@ print("hello")
 - `toc`
 - `admonitions`
 - `code_blocks`
+- `date_element`
 - `jira_links`
+- `status_element`
 
 Если этого достаточно, `enabled_extensions` можно вообще не передавать.
 
@@ -163,7 +203,7 @@ exporter = ConfluenceMarkdownExporter(
 ```python
 importer = ConfluenceMarkdownImporter(
     client,
-    enabled_extensions=["toc", "jira_links"],
+    enabled_extensions=["toc", "jira_links", "date_element", "status_element"],
 )
 ```
 
@@ -197,7 +237,7 @@ Preview markdown:
 Если нужно вручную ограничить набор расширений:
 
 ```text
-/api/v1/page/163939/markdown?enabled_extensions=toc,jira_links
+/api/v1/page/163939/markdown?enabled_extensions=toc,jira_links,date_element,status_element
 ```
 
 ### Через MCP
@@ -298,7 +338,7 @@ custom_extension = ExpandExtension()
 
 importer = ConfluenceMarkdownImporter(
     client,
-    enabled_extensions=["toc", "admonitions"],
+    enabled_extensions=["toc", "admonitions", "date_element", "status_element"],
     extra_extensions=[custom_extension],
 )
 ```
@@ -310,7 +350,7 @@ from confluence_markdown_service import ConfluenceMarkdownExporter
 
 exporter = ConfluenceMarkdownExporter(
     client,
-    enabled_extensions=["toc", "admonitions"],
+    enabled_extensions=["toc", "admonitions", "date_element", "status_element"],
     extra_extensions=[custom_extension],
 )
 ```
@@ -325,7 +365,7 @@ exporter = ConfluenceMarkdownExporter(
 
 ## Ограничения текущей версии
 
-- встроенные расширения активируются только по явному запросу
+- встроенные расширения активны по умолчанию, если не передан пустой список `enabled_extensions=[]`
 - пользовательские расширения пока подключаются программно, а не через YAML-конфиг
 - `admonitions` рассчитаны на поддерживаемый поднабор blockquote syntax
 - `code_blocks` ориентирован на fenced code block с атрибутом `title`

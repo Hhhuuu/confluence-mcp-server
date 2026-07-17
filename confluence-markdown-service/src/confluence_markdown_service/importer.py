@@ -30,8 +30,16 @@ _ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "code": {"class", "title"},
     "pre": {"data-code-title", "data-code-language"},
     "blockquote": {"data-admonition"},
+    "time": {"datetime"},
+    "status": {"color", "colour", "subtle"},
+    "table": set(),
+    "thead": set(),
+    "tbody": set(),
+    "tfoot": set(),
+    "tr": set(),
     "th": {"colspan", "rowspan"},
     "td": {"colspan", "rowspan"},
+    "caption": set(),
 }
 
 

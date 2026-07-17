@@ -324,6 +324,11 @@ class StorageMarkdownRenderer:
         name = local_name(element.tag)
         ns = namespace_uri(element.tag)
 
+        for extension in self._registry.extensions:
+            result = extension.render_inline_element(self, element)
+            if result.handled:
+                return result.markdown
+
         if ns == _AC_URI and name == "structured-macro":
             return self._render_macro(element)
 

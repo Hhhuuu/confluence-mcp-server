@@ -404,7 +404,7 @@ confluence:
 Вход:
 
 - `page_id`
-- `enabled_extensions` — необязательный список расширений, например `["toc", "admonitions", "code_blocks", "jira_links"]`
+- `enabled_extensions` — необязательный список расширений, например `["toc", "admonitions", "code_blocks", "date_element", "jira_links", "status_element"]`
 
 Выход:
 
@@ -788,6 +788,8 @@ Root/Team // Dev/Runbook
 - `toc`
 - `admonitions`
 - `code_blocks`
+- `date_element`
 - `jira_links`
+- `status_element`
 
 Подробное описание и примеры лежат в `EXTENSIONS.md`.

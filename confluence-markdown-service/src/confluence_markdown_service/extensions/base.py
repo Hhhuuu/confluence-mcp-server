@@ -79,3 +79,12 @@ class ConfluenceMarkdownExtension:
         """Обработать Confluence link на этапе Confluence -> Markdown."""
 
         return MarkdownRenderResult()
+
+    def render_inline_element(
+        self,
+        renderer: StorageMarkdownRenderer,
+        element: ET.Element,
+    ) -> MarkdownRenderResult:
+        """Обработать inline-элемент на этапе Confluence -> Markdown."""
+
+        return MarkdownRenderResult()

@@ -308,7 +308,7 @@ confluence:
 
 ### 4.5. Пример markdown с Confluence-расширениями
 
-По умолчанию во встроенном markdown bridge уже включены расширения `toc`, `admonitions`, `code_blocks` и `jira_links`, поэтому можно использовать такой markdown:
+По умолчанию во встроенном markdown bridge уже включены расширения `toc`, `admonitions`, `code_blocks`, `date_element`, `jira_links` и `status_element`, поэтому можно использовать такой markdown:
 
 ```md
 # Руководство по запуску
@@ -335,6 +335,10 @@ confluence:
 ```python {title="run_example.py"}
 print("hello from confluence extension")
 ```
+
+Дата релиза: <time datetime="2026-07-20"></time>
+
+Статус: <status color="Green" subtle="true">Готово</status>
 
 См. задачу по релизу: [KAN-123](https://jira.example.local/browse/KAN-123)
 ```
