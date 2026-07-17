@@ -542,7 +542,7 @@ class StorageMarkdownRenderer:
         target = self._resolve_confluence_resource_target(element)
         if not target:
             return ""
-        alt = html.escape(target.removeprefix("attachment:") if target.startswith("attachment:") else target.split("/")[-1], quote=True)
+        alt = html.escape(self._image_alt_text(element, target), quote=True)
         escaped_target = html.escape(target, quote=True)
         attrs = self._image_dimension_attrs(element)
         return f'<img src="{escaped_target}" alt="{alt}"{attrs}/>'
@@ -562,15 +562,22 @@ class StorageMarkdownRenderer:
             self._warn("Изображение без attachment/url было пропущено при экспорте.")
             return ""
 
-        alt = target.split("/")[-1]
-        if target.startswith("attachment:"):
-            alt = target.removeprefix("attachment:")
+        alt = self._image_alt_text(element, target)
         if self._image_has_dimensions(element):
             escaped_target = html.escape(target, quote=True)
             escaped_alt = html.escape(alt, quote=True)
             attrs = self._image_dimension_attrs(element)
             return f'<img src="{escaped_target}" alt="{escaped_alt}"{attrs}/>'
         return f"![{alt}]({target})"
+
+    @staticmethod
+    def _image_alt_text(element: ET.Element, target: str) -> str:
+        alt = attr_value(element, "ac:alt") or attr_value(element, "alt")
+        if alt:
+            return alt
+        if target.startswith("attachment:"):
+            return target.removeprefix("attachment:")
+        return target.split("/")[-1]
 
     def _render_inline(self, element: ET.Element) -> str:
         fragments: List[str] = []
