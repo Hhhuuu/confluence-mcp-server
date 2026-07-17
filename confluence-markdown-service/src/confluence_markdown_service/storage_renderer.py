@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from typing import List, Sequence
 from xml.etree import ElementTree as ET
@@ -11,6 +12,7 @@ from .storage_normalizer import attr_value, element_text_content, local_name, na
 
 _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
+_TABLE_MODES = {"auto", "markdown", "html"}
 
 
 class StorageMarkdownRenderer:
@@ -27,8 +29,13 @@ class StorageMarkdownRenderer:
         *,
         enabled_extensions: Sequence[str] | None = None,
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+        table_mode: str = "auto",
     ) -> None:
         self.warnings: list[str] = []
+        if table_mode not in _TABLE_MODES:
+            supported = ", ".join(sorted(_TABLE_MODES))
+            raise ValueError(f"Неизвестный table_mode '{table_mode}'. Поддерживаются: {supported}.")
+        self._table_mode = table_mode
         self._registry = build_markdown_extension_registry(
             enabled_extensions=enabled_extensions,
             extra_extensions=extra_extensions,
@@ -258,6 +265,10 @@ class StorageMarkdownRenderer:
         return "\n".join(block for block in nested if block.strip())
 
     def _render_table(self, element: ET.Element) -> str:
+        effective_mode = self._resolve_table_mode(element)
+        if effective_mode == "html":
+            return self._render_table_as_html(element)
+
         rows: List[List[str]] = []
         has_header = False
 
@@ -295,6 +306,248 @@ class StorageMarkdownRenderer:
         ]
         markdown_rows.extend(f"| {' | '.join(row)} |" for row in body_rows)
         return "\n".join(markdown_rows)
+
+    def _resolve_table_mode(self, element: ET.Element) -> str:
+        if self._table_mode in {"markdown", "html"}:
+            return self._table_mode
+
+        if self._table_is_complex(element):
+            self._warn(
+                "Таблица экспортирована как HTML, потому что содержит сложные элементы "
+                "или форматирование, которое плохо переносится в markdown-table."
+            )
+            return "html"
+        return "markdown"
+
+    def _table_is_complex(self, element: ET.Element) -> bool:
+        for cell in element.iter():
+            cell_name = local_name(cell.tag)
+            if cell_name not in {"th", "td"}:
+                continue
+
+            if any(
+                attr_value(cell, attr_name) not in {None, "", "1"}
+                for attr_name in ("colspan", "rowspan")
+            ):
+                return True
+
+            if self._cell_has_complex_content(cell):
+                return True
+        return False
+
+    def _cell_has_complex_content(self, cell: ET.Element) -> bool:
+        block_children = 0
+        for child in cell:
+            name = local_name(child.tag)
+            ns = namespace_uri(child.tag)
+
+            if name == "br":
+                return True
+            if name in {"ul", "ol", "pre", "blockquote", "table", "hr"}:
+                return True
+            if ns == _AC_URI and name in {"structured-macro", "image"}:
+                return True
+            if name == "p":
+                block_children += 1
+                if block_children > 1:
+                    return True
+            if name == "div":
+                return True
+            if child.tail and "\n" in child.tail.strip():
+                return True
+
+        text = element_text_content(cell)
+        return "\n" in text.strip()
+
+    def _render_table_as_html(self, element: ET.Element) -> str:
+        parts: list[str] = ["<table>"]
+        grouped = self._group_table_rows(element)
+
+        if grouped["thead"]:
+            parts.append("<thead>")
+            for row in grouped["thead"]:
+                parts.append(self._render_table_row_as_html(row))
+            parts.append("</thead>")
+
+        if grouped["tbody"]:
+            parts.append("<tbody>")
+            for row in grouped["tbody"]:
+                parts.append(self._render_table_row_as_html(row))
+            parts.append("</tbody>")
+        elif grouped["body"]:
+            parts.append("<tbody>")
+            for row in grouped["body"]:
+                parts.append(self._render_table_row_as_html(row))
+            parts.append("</tbody>")
+
+        if grouped["tfoot"]:
+            parts.append("<tfoot>")
+            for row in grouped["tfoot"]:
+                parts.append(self._render_table_row_as_html(row))
+            parts.append("</tfoot>")
+
+        parts.append("</table>")
+        return "\n".join(parts)
+
+    def _group_table_rows(self, element: ET.Element) -> dict[str, list[ET.Element]]:
+        thead: list[ET.Element] = []
+        tbody: list[ET.Element] = []
+        tfoot: list[ET.Element] = []
+        body: list[ET.Element] = []
+
+        for child in element:
+            name = local_name(child.tag)
+            if name == "thead":
+                thead.extend([row for row in child if local_name(row.tag) == "tr"])
+            elif name == "tbody":
+                tbody.extend([row for row in child if local_name(row.tag) == "tr"])
+            elif name == "tfoot":
+                tfoot.extend([row for row in child if local_name(row.tag) == "tr"])
+            elif name == "tr":
+                body.append(child)
+
+        return {"thead": thead, "tbody": tbody, "tfoot": tfoot, "body": body}
+
+    def _render_table_row_as_html(self, row: ET.Element) -> str:
+        cells: list[str] = []
+        for cell in row:
+            cell_name = local_name(cell.tag)
+            if cell_name not in {"th", "td"}:
+                continue
+            cells.append(self._render_table_cell_as_html(cell, cell_name))
+        return f"<tr>{''.join(cells)}</tr>"
+
+    def _render_table_cell_as_html(self, cell: ET.Element, tag_name: str) -> str:
+        attrs: list[str] = []
+        for attr_name in ("colspan", "rowspan"):
+            value = attr_value(cell, attr_name) or cell.attrib.get(attr_name)
+            if value:
+                attrs.append(f' {attr_name}="{html.escape(value, quote=True)}"')
+
+        content = self._render_table_cell_content_as_html(cell)
+        return f"<{tag_name}{''.join(attrs)}>{content}</{tag_name}>"
+
+    def _render_table_cell_content_as_html(self, cell: ET.Element) -> str:
+        fragments: list[str] = []
+        if cell.text and cell.text.strip():
+            fragments.append(html.escape(self._normalize_inline_text(cell.text)))
+
+        for child in cell:
+            fragments.append(self._render_element_as_html(child))
+            if child.tail and child.tail.strip():
+                fragments.append(html.escape(self._normalize_inline_text(child.tail)))
+
+        return "".join(fragment for fragment in fragments if fragment)
+
+    def _render_element_as_html(self, element: ET.Element) -> str:
+        name = local_name(element.tag)
+        ns = namespace_uri(element.tag)
+
+        if ns == _AC_URI and name == "structured-macro":
+            return self._render_macro_as_html(element)
+        if ns == _AC_URI and name == "link":
+            return self._render_confluence_link_as_html(element)
+        if ns == _AC_URI and name == "image":
+            return self._render_image_as_html(element)
+
+        if name in {"p", "div", "section", "article"}:
+            return f"<p>{self._render_table_cell_content_as_html(element)}</p>"
+        if name in {"strong", "b"}:
+            return f"<strong>{self._render_table_cell_content_as_html(element)}</strong>"
+        if name in {"em", "i"}:
+            return f"<em>{self._render_table_cell_content_as_html(element)}</em>"
+        if name == "code":
+            content = html.escape(element_text_content(element).strip())
+            return f"<code>{content}</code>" if content else ""
+        if name == "pre":
+            content = html.escape(element_text_content(element))
+            return f"<pre>{content}</pre>" if content else ""
+        if name == "br":
+            return "<br/>"
+        if name in {"ul", "ol"}:
+            return self._render_list_as_html(element, ordered=(name == "ol"))
+        if name == "blockquote":
+            return f"<blockquote>{self._render_table_cell_content_as_html(element)}</blockquote>"
+        if name == "hr":
+            return "<hr/>"
+        if name == "a":
+            href = attr_value(element, "href") or element.attrib.get("href") or ""
+            text = self._render_table_cell_content_as_html(element) or html.escape(href)
+            if href:
+                escaped_href = html.escape(href, quote=True)
+                return f'<a href="{escaped_href}">{text}</a>'
+            return text
+        if name == "time":
+            datetime_value = attr_value(element, "datetime") or element.attrib.get("datetime") or ""
+            text = self._render_table_cell_content_as_html(element)
+            escaped_datetime = html.escape(datetime_value, quote=True)
+            return f'<time datetime="{escaped_datetime}">{text}</time>'
+
+        return html.escape(self._fallback_element_text(element))
+
+    def _render_macro_as_html(self, element: ET.Element) -> str:
+        macro_name = self._macro_name(element)
+        if macro_name == "status":
+            title = html.escape(self._macro_parameter(element, "title").strip())
+            colour = html.escape(self._macro_parameter(element, "colour").strip(), quote=True)
+            subtle = html.escape(self._macro_parameter(element, "subtle").strip(), quote=True)
+            attrs: list[str] = []
+            if colour:
+                attrs.append(f' color="{colour}"')
+            if subtle:
+                attrs.append(f' subtle="{subtle}"')
+            return f"<status{''.join(attrs)}>{title}</status>"
+        if macro_name == "code":
+            language = html.escape(self._macro_parameter(element, "language").strip(), quote=True)
+            title = html.escape(self._macro_parameter(element, "title").strip(), quote=True)
+            body = html.escape(self._macro_plain_text_body(element))
+            attrs: list[str] = []
+            if language:
+                attrs.append(f' data-language="{language}"')
+            if title:
+                attrs.append(f' data-title="{title}"')
+            return f"<pre{''.join(attrs)}><code>{body}</code></pre>"
+
+        rich_text = self._macro_rich_text_body(element)
+        if rich_text:
+            return f"<div>{html.escape(rich_text)}</div>"
+        plain_text = self._macro_plain_text_body(element)
+        if plain_text:
+            return html.escape(plain_text)
+        return html.escape(self._fallback_element_text(element))
+
+    def _render_confluence_link_as_html(self, element: ET.Element) -> str:
+        target = ""
+        text = ""
+        for child in element:
+            child_name = local_name(child.tag)
+            child_ns = namespace_uri(child.tag)
+            if child_ns == _RI_URI:
+                target = self._resolve_resource_element_target(child) or ""
+            elif child_ns == _AC_URI and child_name in {"link-body", "plain-text-link-body"}:
+                text = self._render_table_cell_content_as_html(child)
+        text = text or html.escape(target)
+        if not target:
+            return text
+        escaped_target = html.escape(target, quote=True)
+        return f'<a href="{escaped_target}">{text}</a>'
+
+    def _render_image_as_html(self, element: ET.Element) -> str:
+        target = self._resolve_confluence_resource_target(element)
+        if not target:
+            return ""
+        alt = html.escape(target.removeprefix("attachment:") if target.startswith("attachment:") else target.split("/")[-1], quote=True)
+        escaped_target = html.escape(target, quote=True)
+        return f'<img src="{escaped_target}" alt="{alt}"/>'
+
+    def _render_list_as_html(self, element: ET.Element, *, ordered: bool) -> str:
+        tag = "ol" if ordered else "ul"
+        items: list[str] = []
+        for child in element:
+            if local_name(child.tag) != "li":
+                continue
+            items.append(f"<li>{self._render_table_cell_content_as_html(child)}</li>")
+        return f"<{tag}>{''.join(items)}</{tag}>"
 
     def _render_image(self, element: ET.Element) -> str:
         target = self._resolve_confluence_resource_target(element)

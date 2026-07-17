@@ -173,12 +173,17 @@ def list_markdown_extensions() -> dict:
     name="export_page_to_markdown",
     description="Выгрузить страницу Confluence в Markdown с предупреждениями о потерянных макросах.",
 )
-def export_page_to_markdown(page_id: str, enabled_extensions: Optional[List[str]] = None) -> dict:
+def export_page_to_markdown(
+    page_id: str,
+    enabled_extensions: Optional[List[str]] = None,
+    table_mode: str = "auto",
+) -> dict:
     client, _ = load_runtime_client()
     try:
         exporter = ConfluenceMarkdownExporter(
             client,
             enabled_extensions=enabled_extensions,
+            table_mode=table_mode,
         )
         result = exporter.export_page_to_markdown(page_id)
         return result.model_dump(mode="json")
@@ -194,6 +199,7 @@ def export_page_to_markdown_file_tool(
     page_id: str,
     output_path: str,
     enabled_extensions: Optional[List[str]] = None,
+    table_mode: str = "auto",
 ) -> dict:
     client, _ = load_runtime_client()
     try:
@@ -202,6 +208,7 @@ def export_page_to_markdown_file_tool(
             page_id=page_id,
             output_path=output_path,
             enabled_extensions=enabled_extensions,
+            table_mode=table_mode,
         )
         return result.model_dump(mode="json")
     finally:
@@ -216,6 +223,7 @@ def export_page_tree_to_markdown_files_tool(
     page_id: str,
     output_dir: str,
     enabled_extensions: Optional[List[str]] = None,
+    table_mode: str = "auto",
 ) -> dict:
     client, _ = load_runtime_client()
     try:
@@ -224,6 +232,7 @@ def export_page_tree_to_markdown_files_tool(
             root_page_id=page_id,
             output_dir=output_dir,
             enabled_extensions=enabled_extensions,
+            table_mode=table_mode,
         )
         return result.model_dump(mode="json")
     finally:

@@ -144,6 +144,7 @@ class MarkdownFileExportRequest(BaseModel):
 
     output_path: str
     enabled_extensions: Optional[List[str]] = None
+    table_mode: str = "auto"
 
 
 class MarkdownTreeExportRequest(BaseModel):
@@ -151,6 +152,7 @@ class MarkdownTreeExportRequest(BaseModel):
 
     output_dir: str
     enabled_extensions: Optional[List[str]] = None
+    table_mode: str = "auto"
 
 
 @app.get("/api/v1/markdown/extensions")
@@ -369,7 +371,7 @@ def client_page_search(title: str, space_key: Optional[str] = None) -> dict:
 
 
 @app.get("/api/v1/page/{page_id}/markdown")
-def export_page_markdown(page_id: str, enabled_extensions: str = "") -> dict:
+def export_page_markdown(page_id: str, enabled_extensions: str = "", table_mode: str = "auto") -> dict:
     """
     Выгрузить страницу Confluence в Markdown.
 
@@ -385,6 +387,7 @@ def export_page_markdown(page_id: str, enabled_extensions: str = "") -> dict:
             exporter = ConfluenceMarkdownExporter(
                 client,
                 enabled_extensions=_parse_enabled_extensions(enabled_extensions),
+                table_mode=table_mode,
             )
             result = exporter.export_page_to_markdown(page_id)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
@@ -412,6 +415,7 @@ def export_page_markdown_to_file(page_id: str, payload: MarkdownFileExportReques
                 page_id=page_id,
                 output_path=payload.output_path,
                 enabled_extensions=payload.enabled_extensions,
+                table_mode=payload.table_mode,
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -438,6 +442,7 @@ def export_page_tree_markdown_to_files(page_id: str, payload: MarkdownTreeExport
                 root_page_id=page_id,
                 output_dir=payload.output_dir,
                 enabled_extensions=payload.enabled_extensions,
+                table_mode=payload.table_mode,
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
