@@ -284,6 +284,8 @@ def show_config() -> Dict[str, Union[str, None, bool]]:
         "base_url": config.confluence.base_url,
         "verify_ssl": config.confluence.verify_ssl,
         "default_space_key": config.confluence.default_space_key,
+        "jira_server_id": config.confluence.jira_server_id,
+        "jira_server_name": config.confluence.jira_server_name,
     }
 
 
@@ -388,6 +390,7 @@ def export_page_markdown(page_id: str, enabled_extensions: str = "", table_mode:
                 client,
                 enabled_extensions=_parse_enabled_extensions(enabled_extensions),
                 table_mode=table_mode,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = exporter.export_page_to_markdown(page_id)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
@@ -416,6 +419,7 @@ def export_page_markdown_to_file(page_id: str, payload: MarkdownFileExportReques
                 output_path=payload.output_path,
                 enabled_extensions=payload.enabled_extensions,
                 table_mode=payload.table_mode,
+                builtin_extension_options=_builtin_extension_options(),
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -443,6 +447,7 @@ def export_page_tree_markdown_to_files(page_id: str, payload: MarkdownTreeExport
                 output_dir=payload.output_dir,
                 enabled_extensions=payload.enabled_extensions,
                 table_mode=payload.table_mode,
+                builtin_extension_options=_builtin_extension_options(),
             )
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -467,6 +472,7 @@ def preview_markdown(payload: MarkdownPreviewRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.preview_markdown_to_storage(payload.markdown)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
@@ -492,6 +498,7 @@ def preview_markdown_file(payload: MarkdownFilePreviewRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.preview_markdown_file_to_storage(payload.file_path)
     except (ConfigFileNotFoundError, SecretsFileNotFoundError) as exc:
@@ -528,6 +535,7 @@ def create_page_from_markdown(payload: MarkdownCreateRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.create_page_from_markdown(
                 title=payload.title,
@@ -569,6 +577,7 @@ def create_page_from_markdown_file(payload: MarkdownFileCreateRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.create_page_from_markdown_file(
                 title=payload.title,
@@ -599,6 +608,7 @@ def update_page_from_markdown(payload: MarkdownUpdateRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.update_page_from_markdown(
                 page_id=payload.page_id,
@@ -628,6 +638,7 @@ def update_page_from_markdown_file(payload: MarkdownFileUpdateRequest) -> dict:
             importer = ConfluenceMarkdownImporter(
                 client,
                 enabled_extensions=payload.enabled_extensions,
+                builtin_extension_options=_builtin_extension_options(),
             )
             result = importer.update_page_from_markdown_file(
                 page_id=payload.page_id,
@@ -659,3 +670,16 @@ def _parse_enabled_extensions(raw_value: str) -> List[str]:
     if not raw_value.strip():
         return []
     return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _builtin_extension_options() -> dict:
+    config = load_app_config(resolve_config_path())
+    jira_options: dict[str, str] = {}
+    if config.confluence.jira_server_id:
+        jira_options["jira_server_id"] = config.confluence.jira_server_id
+    if config.confluence.jira_server_name:
+        jira_options["jira_server_name"] = config.confluence.jira_server_name
+
+    if not jira_options:
+        return {}
+    return {"jira_links": jira_options}

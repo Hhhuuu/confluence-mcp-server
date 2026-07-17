@@ -21,6 +21,8 @@ class ConfluenceAppConfig(BaseModel):
         deployment: Тип развертывания: `cloud` или `server`.
         verify_ssl: Нужно ли проверять SSL-сертификат.
         default_space_key: Пространство по умолчанию.
+        jira_server_id: Необязательный идентификатор Jira application link для native jira macro.
+        jira_server_name: Необязательное имя Jira application link для native jira macro.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -29,6 +31,8 @@ class ConfluenceAppConfig(BaseModel):
     deployment: str = "cloud"
     verify_ssl: bool = True
     default_space_key: Optional[str] = None
+    jira_server_id: Optional[str] = None
+    jira_server_name: Optional[str] = None
 
 
 class AppConfig(BaseModel):

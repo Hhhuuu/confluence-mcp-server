@@ -22,3 +22,9 @@ confluence:
   # Для Cloud personal space часто выглядит как ~accountId-like-value.
   # Для Server обычно это короткий ключ вида DOC, TEAM, DEV.
   default_space_key: "~your-space-key"
+
+  # Необязательные параметры для native jira macro в Confluence.
+  # Если заполнены оба поля, Jira-ссылки могут публиковаться как macro ac:name="jira"
+  # вместо обычной URL-ссылки.
+  jira_server_id: "your-jira-server-id"
+  jira_server_name: "your-jira-server-name"

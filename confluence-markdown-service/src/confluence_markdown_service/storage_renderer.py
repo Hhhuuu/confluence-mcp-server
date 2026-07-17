@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 import re
-from typing import List, Sequence
+from typing import Any, List, Sequence
 from xml.etree import ElementTree as ET
 
 from .extensions import ConfluenceMarkdownExtension, build_markdown_extension_registry
@@ -30,6 +30,7 @@ class StorageMarkdownRenderer:
         enabled_extensions: Sequence[str] | None = None,
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
         table_mode: str = "auto",
+        builtin_extension_options: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.warnings: list[str] = []
         if table_mode not in _TABLE_MODES:
@@ -39,6 +40,7 @@ class StorageMarkdownRenderer:
         self._registry = build_markdown_extension_registry(
             enabled_extensions=enabled_extensions,
             extra_extensions=extra_extensions,
+            builtin_extension_options=builtin_extension_options,
         )
 
     def render_document(self, root: ET.Element) -> str:

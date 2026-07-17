@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Sequence
+from typing import Any, Sequence
 from urllib.parse import quote
 
 from confluence_client import ConfluenceClient
@@ -46,6 +46,7 @@ class ConfluenceMarkdownExporter:
         enabled_extensions: Sequence[str] | None = None,
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
         table_mode: str = "auto",
+        builtin_extension_options: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         """
         Создать экспортёр с указанным клиентом.
@@ -60,6 +61,7 @@ class ConfluenceMarkdownExporter:
         )
         self._extra_extensions = list(extra_extensions or [])
         self._table_mode = table_mode
+        self._builtin_extension_options = builtin_extension_options
 
     def export_page_to_markdown(self, page_id: str) -> MarkdownExportResult:
         """
@@ -86,6 +88,7 @@ class ConfluenceMarkdownExporter:
             enabled_extensions=self._enabled_extensions,
             extra_extensions=self._extra_extensions,
             table_mode=self._table_mode,
+            builtin_extension_options=self._builtin_extension_options,
         )
         markdown = renderer.render_document(root)
 
@@ -344,6 +347,7 @@ def export_page_to_markdown(
     enabled_extensions: Sequence[str] | None = None,
     extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
     table_mode: str = "auto",
+    builtin_extension_options: dict[str, dict[str, Any]] | None = None,
 ) -> MarkdownExportResult:
     """
     Функциональный wrapper поверх `ConfluenceMarkdownExporter`.
@@ -358,6 +362,7 @@ def export_page_to_markdown(
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
         table_mode=table_mode,
+        builtin_extension_options=builtin_extension_options,
     ).export_page_to_markdown(page_id)
 
 
@@ -369,6 +374,7 @@ def export_page_to_markdown_file(
     enabled_extensions: Sequence[str] | None = None,
     extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
     table_mode: str = "auto",
+    builtin_extension_options: dict[str, dict[str, Any]] | None = None,
 ) -> MarkdownExportResult:
     """
     Выгрузить страницу Confluence в Markdown-файл на диске.
@@ -379,6 +385,7 @@ def export_page_to_markdown_file(
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
         table_mode=table_mode,
+        builtin_extension_options=builtin_extension_options,
     ).export_page_to_markdown(page_id)
     path = Path(output_path).expanduser()
     return ConfluenceMarkdownExporter(
@@ -386,6 +393,7 @@ def export_page_to_markdown_file(
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
         table_mode=table_mode,
+        builtin_extension_options=builtin_extension_options,
     )._materialize_markdown_bundle(
         page_id=page_id,
         export_result=result,
@@ -401,6 +409,7 @@ def export_page_tree_to_markdown_files(
     enabled_extensions: Sequence[str] | None = None,
     extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
     table_mode: str = "auto",
+    builtin_extension_options: dict[str, dict[str, Any]] | None = None,
 ) -> MarkdownTreeExportResult:
     """
     Функциональный wrapper для выгрузки дерева страниц в Markdown-файлы.
@@ -411,6 +420,7 @@ def export_page_tree_to_markdown_files(
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
         table_mode=table_mode,
+        builtin_extension_options=builtin_extension_options,
     ).export_page_tree_to_markdown_files(
         root_page_id=root_page_id,
         output_dir=output_dir,

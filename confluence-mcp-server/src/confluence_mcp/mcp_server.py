@@ -13,7 +13,7 @@ from confluence_markdown_service import (
     list_builtin_markdown_extensions,
 )
 from mcp.server.fastmcp import FastMCP
-from confluence_pagecreator_service import CreatePagesRequest
+from confluence_pagecreator_service import CreatePagesRequest, load_app_config
 
 from .runtime import (
     load_runtime_client,
@@ -53,6 +53,8 @@ def show_runtime_config() -> dict:
         "secrets_path": str(secrets_path),
         "base_url": base_url,
         "default_space_key": default_space_key,
+        "jira_server_id": _jira_builtin_options().get("jira_server_id"),
+        "jira_server_name": _jira_builtin_options().get("jira_server_name"),
     }
 
 
@@ -184,6 +186,7 @@ def export_page_to_markdown(
             client,
             enabled_extensions=enabled_extensions,
             table_mode=table_mode,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = exporter.export_page_to_markdown(page_id)
         return result.model_dump(mode="json")
@@ -209,6 +212,7 @@ def export_page_to_markdown_file_tool(
             output_path=output_path,
             enabled_extensions=enabled_extensions,
             table_mode=table_mode,
+            builtin_extension_options=_builtin_extension_options(),
         )
         return result.model_dump(mode="json")
     finally:
@@ -233,6 +237,7 @@ def export_page_tree_to_markdown_files_tool(
             output_dir=output_dir,
             enabled_extensions=enabled_extensions,
             table_mode=table_mode,
+            builtin_extension_options=_builtin_extension_options(),
         )
         return result.model_dump(mode="json")
     finally:
@@ -249,6 +254,7 @@ def preview_markdown_to_storage(markdown_text: str, enabled_extensions: Optional
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.preview_markdown_to_storage(markdown_text)
         return result.model_dump(mode="json")
@@ -266,6 +272,7 @@ def preview_markdown_file_to_storage(file_path: str, enabled_extensions: Optiona
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.preview_markdown_file_to_storage(file_path)
         return result.model_dump(mode="json")
@@ -294,6 +301,7 @@ def create_page_from_markdown(
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.create_page_from_markdown(
             title=title,
@@ -327,6 +335,7 @@ def create_page_from_markdown_file(
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.create_page_from_markdown_file(
             title=title,
@@ -354,6 +363,7 @@ def update_page_from_markdown(
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.update_page_from_markdown(
             page_id=page_id,
@@ -380,6 +390,7 @@ def update_page_from_markdown_file(
         importer = ConfluenceMarkdownImporter(
             client,
             enabled_extensions=enabled_extensions,
+            builtin_extension_options=_builtin_extension_options(),
         )
         result = importer.update_page_from_markdown_file(
             page_id=page_id,
@@ -389,6 +400,23 @@ def update_page_from_markdown_file(
         return result.model_dump(mode="json")
     finally:
         client.close()
+
+
+def _jira_builtin_options() -> dict[str, str]:
+    config = load_app_config(resolve_config_path())
+    jira_options: dict[str, str] = {}
+    if config.confluence.jira_server_id:
+        jira_options["jira_server_id"] = config.confluence.jira_server_id
+    if config.confluence.jira_server_name:
+        jira_options["jira_server_name"] = config.confluence.jira_server_name
+    return jira_options
+
+
+def _builtin_extension_options() -> dict:
+    jira_options = _jira_builtin_options()
+    if not jira_options:
+        return {}
+    return {"jira_links": jira_options}
 
 
 def main() -> None:

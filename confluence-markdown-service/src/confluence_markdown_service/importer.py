@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree as ET
 
@@ -30,7 +30,7 @@ _ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "code": {"class", "title"},
     "pre": {"data-code-title", "data-code-language"},
     "blockquote": {"data-admonition"},
-    "time": {"datetime"},
+    "time": {"datetime", "datatime"},
     "status": {"color", "colour", "subtle"},
     "table": set(),
     "thead": set(),
@@ -65,12 +65,14 @@ class ConfluenceMarkdownImporter:
         *,
         enabled_extensions: Sequence[str] | None = None,
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+        builtin_extension_options: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._client = client
         self._root: ET.Element | None = None
         self._registry = build_markdown_extension_registry(
             enabled_extensions=enabled_extensions,
             extra_extensions=extra_extensions,
+            builtin_extension_options=builtin_extension_options,
         )
         self.warnings: list[str] = []
 
@@ -630,6 +632,7 @@ def preview_markdown_to_storage(
     *,
     enabled_extensions: Sequence[str] | None = None,
     extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+    builtin_extension_options: dict[str, dict[str, Any]] | None = None,
 ) -> MarkdownPreviewResult:
     """
     Функциональный wrapper для preview markdown -> storage.
@@ -639,4 +642,5 @@ def preview_markdown_to_storage(
         client,
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
+        builtin_extension_options=builtin_extension_options,
     ).preview_markdown_to_storage(markdown_text)

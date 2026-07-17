@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, Sequence
+from typing import Any, Iterable, List, Sequence
 
 from ..exceptions import MarkdownBridgeError
 from .admonitions import AdmonitionsExtension
@@ -57,6 +57,7 @@ class MarkdownExtensionRegistry:
         cls,
         enabled_extensions: Sequence[str] | None = None,
         extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+        builtin_extension_options: dict[str, dict[str, Any]] | None = None,
     ) -> "MarkdownExtensionRegistry":
         extensions: list[ConfluenceMarkdownExtension] = []
         builtin_names = _DEFAULT_BUILTIN_EXTENSION_NAMES if enabled_extensions is None else list(enabled_extensions)
@@ -68,7 +69,8 @@ class MarkdownExtensionRegistry:
                     f"Неизвестное markdown-расширение '{name}'. "
                     f"Поддерживаются: {supported}."
                 )
-            extensions.append(extension_type())
+            extension_options = (builtin_extension_options or {}).get(name, {})
+            extensions.append(extension_type(**extension_options))
 
         for extension in extra_extensions or []:
             extensions.append(extension)
@@ -85,10 +87,12 @@ def list_builtin_markdown_extensions() -> List[ExtensionInfo]:
 def build_markdown_extension_registry(
     enabled_extensions: Sequence[str] | None = None,
     extra_extensions: Sequence[ConfluenceMarkdownExtension] | None = None,
+    builtin_extension_options: dict[str, dict[str, Any]] | None = None,
 ) -> MarkdownExtensionRegistry:
     """Построить registry по именам встроенных и пользовательским расширениям."""
 
     return MarkdownExtensionRegistry.build(
         enabled_extensions=enabled_extensions,
         extra_extensions=extra_extensions,
+        builtin_extension_options=builtin_extension_options,
     )
