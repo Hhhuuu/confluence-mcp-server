@@ -452,6 +452,10 @@ class StorageMarkdownRenderer:
 
         if name in {"p", "div", "section", "article"}:
             return f"<p>{self._render_table_cell_content_as_html(element)}</p>"
+        if name in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            return f"<{name}>{self._render_table_cell_content_as_html(element)}</{name}>"
+        if name == "span":
+            return f"<span>{self._render_table_cell_content_as_html(element)}</span>"
         if name in {"strong", "b"}:
             return f"<strong>{self._render_table_cell_content_as_html(element)}</strong>"
         if name in {"em", "i"}:
