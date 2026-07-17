@@ -13,16 +13,24 @@ from .base import (
 )
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_DATE_SHORTCUT_RE = re.compile(r"\[date:(?P<date>\d{4}-\d{2}-\d{2})\]", re.IGNORECASE)
 
 
 class DateElementExtension(ConfluenceMarkdownExtension):
-    """Поддержка `<time datetime="YYYY-MM-DD">` <-> Confluence date element."""
+    """Поддержка `[date:YYYY-MM-DD]` и `<time ...>` <-> Confluence date element."""
 
     name = "date_element"
     description = (
-        "Поддержка элемента даты через HTML-тег "
-        '<time datetime="YYYY-MM-DD">.'
+        "Поддержка элемента даты через синтаксис "
+        "[date:YYYY-MM-DD] и HTML-тег <time datetime=\"YYYY-MM-DD\">."
     )
+
+    def preprocess_markdown(self, markdown_text: str) -> str:
+        def replace(match: re.Match[str]) -> str:
+            value = match.group("date")
+            return f'<time datetime="{value}">{value}</time>'
+
+        return _DATE_SHORTCUT_RE.sub(replace, markdown_text)
 
     def transform_import_element(self, importer, element: ET.Element) -> MarkdownImportTransformResult:
         if namespace_uri(element.tag):
@@ -40,8 +48,7 @@ class DateElementExtension(ConfluenceMarkdownExtension):
         time_element = ET.Element("time")
         time_element.attrib["datetime"] = datetime_value
         text = importer._collapse_text(element).strip()  # noqa: SLF001
-        if text:
-            time_element.text = text
+        time_element.text = text or datetime_value
         return MarkdownImportTransformResult(handled=True, replacement=time_element)
 
     def render_inline_element(self, renderer, element: ET.Element) -> MarkdownRenderResult:
@@ -55,8 +62,6 @@ class DateElementExtension(ConfluenceMarkdownExtension):
             return MarkdownRenderResult()
 
         text = renderer._render_inline(element).strip()  # noqa: SLF001
-        if text:
-            markdown = f'<time datetime="{datetime_value}">{text}</time>'
-        else:
-            markdown = f'<time datetime="{datetime_value}"></time>'
+        visible_text = text or datetime_value
+        markdown = f'<time datetime="{datetime_value}">{visible_text}</time>'
         return MarkdownRenderResult(handled=True, markdown=markdown)
