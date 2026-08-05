@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from confluence_markdown_service import (
     ConfluenceMarkdownExporter,
@@ -65,6 +65,7 @@ class CreateRequest(BaseModel):
     paths: List[str] = Field(default_factory=list)
     space_key: Optional[str] = None
     content: str = ""
+    content_format: Literal["markdown", "storage"] = "markdown"
 
 
 class MarkdownPreviewRequest(BaseModel):
@@ -241,12 +242,23 @@ def create(payload: CreateRequest) -> dict:
     """
 
     try:
+        prepared_content = payload.content
+        if payload.content and payload.content_format == "markdown":
+            with _load_client() as client:
+                importer = ConfluenceMarkdownImporter(
+                    client,
+                    builtin_extension_options=_builtin_extension_options(),
+                )
+                prepared_content = importer.preview_markdown_to_storage(
+                    payload.content
+                ).storage
+
         service, default_space_key = _load_service()
         result = service.create_pages(
             CreatePagesRequest(
                 paths=payload.paths,
                 space_key=payload.space_key,
-                content=payload.content,
+                content=prepared_content,
                 dry_run=False,
             ),
             default_space_key=default_space_key,

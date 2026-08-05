@@ -79,13 +79,26 @@ def create_pages(
     paths: List[str],
     space_key: Optional[str] = None,
     content: str = "",
+    content_format: Literal["markdown", "storage"] = "markdown",
 ) -> dict:
+    prepared_content = content
+    if content and content_format == "markdown":
+        client, _ = load_runtime_client()
+        try:
+            importer = ConfluenceMarkdownImporter(
+                client,
+                builtin_extension_options=_builtin_extension_options(),
+            )
+            prepared_content = importer.preview_markdown_to_storage(content).storage
+        finally:
+            client.close()
+
     service, default_space_key = load_runtime_service()
     result = service.create_pages(
         CreatePagesRequest(
             paths=paths,
             space_key=space_key,
-            content=content,
+            content=prepared_content,
             dry_run=False,
         ),
         default_space_key=default_space_key,

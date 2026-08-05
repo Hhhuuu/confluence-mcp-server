@@ -28,6 +28,9 @@ _HTML_IMAGE_SRC_PATTERN = re.compile(
     r'(?P<prefix><img\b[^>]*?\bsrc=")(?P<target>[^"]+)(?P<suffix>"[^>]*?/?>)',
     re.IGNORECASE,
 )
+_MARKDOWN_LIST_ITEM_PATTERN = re.compile(
+    r"^(?P<indent> {0,3})(?:[-+*]|\d+[.)])\s+\S"
+)
 _ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "a": {"href", "title"},
     "img": {"src", "alt", "title", "width", "height"},
@@ -226,7 +229,7 @@ class ConfluenceMarkdownImporter:
     def _render_markdown_to_xhtml(self, markdown_text: str) -> str:
         try:
             return markdown_lib.markdown(
-                markdown_text,
+                self._normalize_list_boundaries(markdown_text),
                 extensions=["extra", "fenced_code", "tables", "sane_lists"],
                 output_format="xhtml",
             )
@@ -234,6 +237,37 @@ class ConfluenceMarkdownImporter:
             raise MarkdownBridgeError(
                 f"Не удалось преобразовать Markdown в XHTML: {exc}"
             ) from exc
+
+    @staticmethod
+    def _normalize_list_boundaries(markdown_text: str) -> str:
+        """Отделить начало списка от предыдущего абзаца.
+
+        Python Markdown требует пустую строку перед списком, хотя
+        распространённый Markdown часто пишут без неё.
+        """
+
+        lines = markdown_text.splitlines(keepends=True)
+        normalized: list[str] = []
+        in_fence = False
+        previous_was_list_item = False
+
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_fence = not in_fence
+
+            is_list_item = not in_fence and bool(
+                _MARKDOWN_LIST_ITEM_PATTERN.match(line.rstrip("\r\n"))
+            )
+            previous_is_blank = not normalized or not normalized[-1].strip()
+            if is_list_item and not previous_is_blank and not previous_was_list_item:
+                newline = "\r\n" if line.endswith("\r\n") else "\n"
+                normalized.append(newline)
+
+            normalized.append(line)
+            previous_was_list_item = is_list_item
+
+        return "".join(normalized)
 
     @staticmethod
     def _read_markdown_file(path: Path) -> str:

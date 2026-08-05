@@ -146,6 +146,9 @@ Authorization: Bearer <token>
 `before` и `after` задают порядок среди соседних страниц, `append` переносит
 страницу под `target_page_id` и делает её последней дочерней страницей.
 
+В `create_pages` параметр `content` по умолчанию считается Markdown. Готовый
+Confluence Storage Format можно передать с `content_format="storage"`.
+
 В корне рабочей области лежит файл `.mcp.json`, который подключает сервер `confluence-mcp` через отдельное окружение `.venv-mcp`.
 
 Команда запуска для stdio-режима:
