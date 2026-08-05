@@ -553,6 +553,9 @@ class ConfluenceClient:
         if page_id == target_page_id:
             raise ValueError("page_id и target_page_id должны отличаться.")
 
+        if self._config.deployment == "server":
+            return self._move_page_server(page_id, target_page_id, position)
+
         response = self._request(
             "PUT",
             self._api_path(
@@ -560,6 +563,35 @@ class ConfluenceClient:
             ),
         )
         return MovePageResult.model_validate(response.json())
+
+    def _move_page_server(
+        self,
+        page_id: str,
+        target_page_id: str,
+        position: Literal["before", "after", "append"],
+    ) -> MovePageResult:
+        """Изменить порядок через нативный Server/DC page-tree action."""
+
+        server_position = {
+            "before": "above",
+            "after": "below",
+            "append": "append",
+        }[position]
+        response = self._request(
+            "GET",
+            "/pages/movepage.action",
+            params={
+                "pageId": page_id,
+                "point": server_position,
+                "targetId": target_page_id,
+            },
+        )
+        if response.headers.get("success", "").lower() != "true":
+            raise ConfluenceRequestError(
+                "Confluence Server не подтвердил перемещение страницы "
+                f"{page_id}: {response.text}"
+            )
+        return MovePageResult.model_validate({"pageId": page_id})
 
     def close(self) -> None:
         """
