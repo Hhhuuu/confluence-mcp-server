@@ -9,6 +9,7 @@ from .exceptions import (
 from .models import (
     AttachmentSummary,
     AttachmentsResponse,
+    MovePageResult,
     PageData,
     PageSummary,
     PagesResponse,
@@ -24,6 +25,7 @@ __all__ = [
     "ConfluenceRequestError",
     "AttachmentSummary",
     "AttachmentsResponse",
+    "MovePageResult",
     "PageData",
     "PageSummary",
     "PagesResponse",

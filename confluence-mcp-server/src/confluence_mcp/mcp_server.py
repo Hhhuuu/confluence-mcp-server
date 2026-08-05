@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from confluence_markdown_service import (
     ConfluenceMarkdownExporter,
@@ -154,6 +154,30 @@ def get_page(page_id: str, include_storage: bool = False) -> dict:
         else:
             page = client.find_page_by_id(page_id)
         return page.model_dump(mode="json")
+    finally:
+        client.close()
+
+
+@mcp.tool(
+    name="move_page",
+    description=(
+        "Изменить порядок или положение страницы: before/after — до/после "
+        "целевой страницы, append — последней дочерней страницей цели."
+    ),
+)
+def move_page(
+    page_id: str,
+    target_page_id: str,
+    position: Literal["before", "after", "append"],
+) -> dict:
+    client, _ = load_runtime_client()
+    try:
+        result = client.move_page(
+            page_id=page_id,
+            target_page_id=target_page_id,
+            position=position,
+        )
+        return result.model_dump(mode="json")
     finally:
         client.close()
 

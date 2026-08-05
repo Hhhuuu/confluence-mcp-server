@@ -148,6 +148,12 @@ class PageData(ConfluenceModel):
     page_url: str
 
 
+class MovePageResult(ConfluenceModel):
+    """Результат изменения позиции страницы."""
+
+    page_id: str = Field(alias="pageId")
+
+
 class CreatePageRequest(ConfluenceModel):
     """Запрос на создание страницы."""
 

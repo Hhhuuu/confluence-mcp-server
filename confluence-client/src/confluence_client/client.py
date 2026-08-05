@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import mimetypes
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union
 from urllib.parse import urljoin
 
 import httpx
@@ -22,6 +22,7 @@ from .models import (
     ConfluencePageResponse,
     CreatePageRequest,
     CurrentUserResponse,
+    MovePageResult,
     PageData,
     PageSummary,
     PagesResponse,
@@ -530,6 +531,35 @@ class ConfluenceClient:
         )
         result = ConfluencePageResponse.model_validate(response.json())
         return self._to_page_data(result)
+
+    def move_page(
+        self,
+        page_id: str,
+        target_page_id: str,
+        position: Literal["before", "after", "append"],
+    ) -> MovePageResult:
+        """Изменить позицию страницы относительно другой страницы.
+
+        `before` и `after` перемещают страницу под того же родителя,
+        что и целевая страница, и ставят её до или после цели.
+        `append` делает страницу последней дочерней страницей цели.
+        """
+
+        allowed_positions = {"before", "after", "append"}
+        if position not in allowed_positions:
+            raise ValueError(
+                "position должен быть одним из: before, after, append."
+            )
+        if page_id == target_page_id:
+            raise ValueError("page_id и target_page_id должны отличаться.")
+
+        response = self._request(
+            "PUT",
+            self._api_path(
+                f"{_REST_API}/{page_id}/move/{position}/{target_page_id}"
+            ),
+        )
+        return MovePageResult.model_validate(response.json())
 
     def close(self) -> None:
         """
