@@ -570,28 +570,41 @@ class ConfluenceClient:
         target_page_id: str,
         position: Literal["before", "after", "append"],
     ) -> MovePageResult:
-        """Изменить порядок через нативный Server/DC page-tree action."""
+        """Перенести страницу под родителя через Server/DC 8.5 REST API."""
 
-        server_position = {
-            "before": "above",
-            "after": "below",
-            "append": "append",
-        }[position]
-        response = self._request(
-            "GET",
-            "/pages/movepage.action",
-            params={
-                "pageId": page_id,
-                "point": server_position,
-                "targetId": target_page_id,
-            },
-        )
-        if response.headers.get("success", "").lower() != "true":
+        if position != "append":
             raise ConfluenceRequestError(
-                "Confluence Server не подтвердил перемещение страницы "
-                f"{page_id}: {response.text}"
+                "Confluence Server/Data Center 8.5 REST API не поддерживает "
+                "изменение порядка before/after через PAT. Доступен только "
+                "append — перенос страницы под нового родителя без гарантии "
+                "позиции среди дочерних страниц."
             )
-        return MovePageResult.model_validate({"pageId": page_id})
+
+        source = self.find_page_by_id(page_id)
+        if source.version is None:
+            source = self.find_page_by_id_with_storage(page_id)
+        if source.version is None:
+            raise ConfluenceRequestError(
+                f"Confluence Server не вернул version страницы {page_id}."
+            )
+
+        payload = {
+            "id": page_id,
+            "type": source.type or "page",
+            "title": source.title,
+            "version": {"number": source.version.number + 1},
+            "ancestors": [{"id": target_page_id}],
+        }
+        response = self._request(
+            "PUT",
+            self._api_path(f"{_REST_API}/{page_id}"),
+            json=payload,
+        )
+        response_payload = response.json()
+        return MovePageResult.model_validate(
+            {"pageId": str(response_payload.get("id", page_id))}
+        )
+
 
     def close(self) -> None:
         """

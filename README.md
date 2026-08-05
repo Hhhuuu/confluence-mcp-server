@@ -146,7 +146,8 @@ Authorization: Bearer <token>
 `before` и `after` задают порядок среди соседних страниц, `append` переносит
 страницу под `target_page_id` и делает её последней дочерней страницей.
 Cloud для этого использует REST endpoint `content/{id}/move`, а Server/Data Center —
-нативный page-tree action `/pages/movepage.action`.
+токен-совместимое обновление `ancestors` через Content REST API. В Server/DC 8.5
+через PAT доступен только `append` без гарантии порядка; `before/after` не поддерживаются.
 
 В `create_pages` параметр `content` по умолчанию считается Markdown. Готовый
 Confluence Storage Format можно передать с `content_format="storage"`.

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import httpx
 
 from confluence_client.client import ConfluenceClient
+from confluence_client.exceptions import ConfluenceRequestError
 
 
 class RecordingConfluenceClient(ConfluenceClient):
@@ -61,39 +62,49 @@ class RecordingServerClient(ConfluenceClient):
 
     def _request(self, method: str, path: str, **kwargs: object) -> httpx.Response:
         self.requests.append((method, path, kwargs))
+        if method == "GET" and path.endswith("/123"):
+            payload = {
+                "id": "123",
+                "type": "page",
+                "title": "Source",
+                "version": {"number": 4},
+            }
+        else:
+            payload = {"id": "123", "title": "Source"}
         return httpx.Response(
             200,
-            content=b"moved",
-            headers={"success": "true"},
+            content=json.dumps(payload).encode(),
             request=httpx.Request(method, f"https://example.test{path}"),
         )
 
 
 class MovePageServerTests(unittest.TestCase):
-    def test_moves_page_after_target_with_move_page_action(self) -> None:
+    def test_rejects_after_not_supported_by_85_rest_api(self) -> None:
         client = RecordingServerClient()
 
-        result = client.move_page("123", "456", "after")
+        with self.assertRaisesRegex(ConfluenceRequestError, "8.5 REST API"):
+            client.move_page("123", "456", "after")
+
+        self.assertEqual(client.requests, [])
+
+    def test_appends_page_under_target_with_content_rest_api(self) -> None:
+        client = RecordingServerClient()
+
+        result = client.move_page("123", "456", "append")
 
         self.assertEqual(result.page_id, "123")
-        method, path, kwargs = client.requests[0]
-        self.assertEqual((method, path), ("GET", "/pages/movepage.action"))
+        method, path, kwargs = client.requests[-1]
+        self.assertEqual((method, path), ("PUT", "/rest/api/content/123"))
         self.assertEqual(
-            kwargs["params"],
+            kwargs["json"],
             {
-                "pageId": "123",
-                "point": "below",
-                "targetId": "456",
+                "id": "123",
+                "type": "page",
+                "title": "Source",
+                "version": {"number": 5},
+                "ancestors": [{"id": "456"}],
             },
         )
-
-    def test_appends_page_as_last_child(self) -> None:
-        client = RecordingServerClient()
-
-        client.move_page("123", "456", "append")
-
-        params = client.requests[0][2]["params"]
-        self.assertEqual(params["point"], "append")
 
 
 if __name__ == "__main__":
