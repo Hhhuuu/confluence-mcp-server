@@ -10,6 +10,7 @@ from .base import (
 from .code_blocks import CodeBlocksExtension
 from .date_element import DateElementExtension
 from .jira_links import JiraLinksExtension
+from .mermaid_diagrams import GeneratedMermaidAttachment, MermaidDiagramsExtension
 from .registry import (
     MarkdownExtensionRegistry,
     build_markdown_extension_registry,
@@ -23,6 +24,8 @@ __all__ = [
     "CodeBlocksExtension",
     "DateElementExtension",
     "JiraLinksExtension",
+    "GeneratedMermaidAttachment",
+    "MermaidDiagramsExtension",
     "ConfluenceMarkdownExtension",
     "ExtensionInfo",
     "MarkdownExtensionRegistry",

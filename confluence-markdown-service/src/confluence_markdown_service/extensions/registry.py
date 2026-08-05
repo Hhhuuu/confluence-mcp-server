@@ -10,6 +10,7 @@ from .base import ConfluenceMarkdownExtension, ExtensionInfo
 from .code_blocks import CodeBlocksExtension
 from .date_element import DateElementExtension
 from .jira_links import JiraLinksExtension
+from .mermaid_diagrams import MermaidDiagramsExtension
 from .status_element import StatusElementExtension
 from .toc import TocExtension
 
@@ -19,6 +20,7 @@ _BUILTIN_EXTENSION_TYPES = {
     CodeBlocksExtension.name: CodeBlocksExtension,
     DateElementExtension.name: DateElementExtension,
     JiraLinksExtension.name: JiraLinksExtension,
+    MermaidDiagramsExtension.name: MermaidDiagramsExtension,
     StatusElementExtension.name: StatusElementExtension,
 }
 

@@ -451,9 +451,13 @@ def _jira_builtin_options() -> dict[str, str]:
 
 def _builtin_extension_options() -> dict:
     jira_options = _jira_builtin_options()
-    if not jira_options:
-        return {}
-    return {"jira_links": jira_options}
+    config = load_app_config(resolve_config_path())
+    options: dict = {
+        "mermaid_diagrams": {"enabled": config.confluence.deployment == "server"}
+    }
+    if jira_options:
+        options["jira_links"] = jira_options
+    return options
 
 
 def main() -> None:

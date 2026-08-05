@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Any, Iterable, Sequence
+import tempfile
+from typing import Any, Callable, Iterable, Sequence
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree as ET
 
@@ -30,6 +31,10 @@ _HTML_IMAGE_SRC_PATTERN = re.compile(
 )
 _MARKDOWN_LIST_ITEM_PATTERN = re.compile(
     r"^(?P<indent> {0,3})(?:[-+*]|\d+[.)])\s+\S"
+)
+_MARKDOWN_FENCE_PATTERN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+_MARKDOWN_INLINE_CODE_PATTERN = re.compile(
+    r"(?P<ticks>`+)(?P<body>.*?)(?P=ticks)"
 )
 _ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "a": {"href", "title"},
@@ -94,8 +99,18 @@ class ConfluenceMarkdownImporter:
             Содержимое storage format и предупреждения.
         """
 
+        return self._preview_markdown(markdown_text)
+
+    def _preview_markdown(
+        self,
+        markdown_text: str,
+        *,
+        attachment_page_id: str | None = None,
+    ) -> MarkdownPreviewResult:
         self.warnings = []
         prepared_markdown = self._registry.preprocess_markdown(markdown_text)
+        if attachment_page_id:
+            self._resolve_generated_attachment_revisions(attachment_page_id)
         html = self._render_markdown_to_xhtml(prepared_markdown)
         storage, warnings = self._xhtml_to_storage(html)
         return MarkdownPreviewResult(storage=storage, warnings=warnings)
@@ -131,11 +146,12 @@ class ConfluenceMarkdownImporter:
             parent_id=parent_id,
             content=preview.storage,
         )
+        generated_attachments = self._upload_generated_mermaid_attachments(page.page_id)
         return MarkdownPublishResult(
             title=page.title,
             page_id=page.page_id,
             page_url=page.page_url,
-            attachments=[],
+            attachments=generated_attachments,
             warnings=preview.warnings,
         )
 
@@ -163,7 +179,7 @@ class ConfluenceMarkdownImporter:
             space_key=space_key,
         )
         result.source_path = str(path)
-        result.attachments = self._upload_local_attachments(result.page_id, attachments)
+        result.attachments.extend(self._upload_local_attachments(result.page_id, attachments))
         result.warnings = [*local_warnings, *result.warnings]
         return result
 
@@ -183,7 +199,10 @@ class ConfluenceMarkdownImporter:
                 f"Для страницы {page_id} не удалось определить version или space."
             )
 
-        preview = self.preview_markdown_to_storage(markdown_text)
+        preview = self._preview_markdown(
+            markdown_text,
+            attachment_page_id=page_id,
+        )
         next_version = page.version.number + 1
         page_data = self._client.update_page(
             title=title or page.title,
@@ -192,11 +211,12 @@ class ConfluenceMarkdownImporter:
             version_number=next_version,
             content=preview.storage,
         )
+        generated_attachments = self._upload_generated_mermaid_attachments(page.id)
         return MarkdownPublishResult(
             title=page_data.title,
             page_id=page_data.page_id,
             page_url=page_data.page_url,
-            attachments=[],
+            attachments=generated_attachments,
             warnings=preview.warnings,
         )
 
@@ -222,7 +242,7 @@ class ConfluenceMarkdownImporter:
             title=title,
         )
         result.source_path = str(path)
-        result.attachments = self._upload_local_attachments(result.page_id, attachments)
+        result.attachments.extend(self._upload_local_attachments(result.page_id, attachments))
         result.warnings = [*local_warnings, *result.warnings]
         return result
 
@@ -340,11 +360,59 @@ class ConfluenceMarkdownImporter:
             _, attachment_target = registered
             return f'{match.group("prefix")}{attachment_target}{match.group("suffix")}'
 
-        prepared = _MARKDOWN_IMAGE_PATTERN.sub(replace_image, markdown_text)
-        prepared = _MARKDOWN_LINK_PATTERN.sub(replace_link, prepared)
-        prepared = _HTML_IMAGE_SRC_PATTERN.sub(replace_html_image, prepared)
+        def replace_attachments(text: str) -> str:
+            prepared_text = _MARKDOWN_IMAGE_PATTERN.sub(replace_image, text)
+            prepared_text = _MARKDOWN_LINK_PATTERN.sub(replace_link, prepared_text)
+            return _HTML_IMAGE_SRC_PATTERN.sub(replace_html_image, prepared_text)
+
+        prepared = self._replace_outside_code(markdown_text, replace_attachments)
         unique_attachments = list(self._deduplicate_attachments(attachments))
         return prepared, unique_attachments, warnings
+
+    @staticmethod
+    def _replace_outside_code(
+        markdown_text: str,
+        replace_text: Callable[[str], str],
+    ) -> str:
+        """Применить замену только вне Markdown-блоков и inline code."""
+
+        prepared: list[str] = []
+        fence_character: str | None = None
+        fence_length = 0
+
+        for line in markdown_text.splitlines(keepends=True):
+            line_without_ending = line.rstrip("\r\n")
+            if fence_character is not None:
+                prepared.append(line)
+                closing_fence = re.match(
+                    rf"^ {{0,3}}{re.escape(fence_character)}{{{fence_length},}}\s*$",
+                    line_without_ending,
+                )
+                if closing_fence:
+                    fence_character = None
+                    fence_length = 0
+                continue
+
+            opening_fence = _MARKDOWN_FENCE_PATTERN.match(line_without_ending)
+            if opening_fence:
+                fence = opening_fence.group("fence")
+                fence_character = fence[0]
+                fence_length = len(fence)
+                prepared.append(line)
+                continue
+
+            if line.startswith("    ") or line.startswith("\t"):
+                prepared.append(line)
+                continue
+
+            cursor = 0
+            for inline_code in _MARKDOWN_INLINE_CODE_PATTERN.finditer(line):
+                prepared.append(replace_text(line[cursor:inline_code.start()]))
+                prepared.append(inline_code.group(0))
+                cursor = inline_code.end()
+            prepared.append(replace_text(line[cursor:]))
+
+        return "".join(prepared)
 
     @staticmethod
     def _extract_markdown_target(raw_target: str) -> str:
@@ -419,6 +487,52 @@ class ConfluenceMarkdownImporter:
                 )
             )
         return uploaded
+
+    def _resolve_generated_attachment_revisions(self, page_id: str) -> None:
+        extension = self._mermaid_extension()
+        if extension is None:
+            return
+        for generated in extension.generated_attachments:
+            existing = self._client.find_attachment_by_filename(page_id, generated.filename)
+            revision = 1
+            if existing is not None and existing.version is not None:
+                revision = existing.version.number + 1
+            extension.set_revision(generated.filename, revision)
+
+    def _upload_generated_mermaid_attachments(
+        self,
+        page_id: str,
+    ) -> list[MarkdownAttachmentResult]:
+        extension = self._mermaid_extension()
+        if extension is None or not extension.generated_attachments:
+            return []
+
+        uploaded: list[MarkdownAttachmentResult] = []
+        with tempfile.TemporaryDirectory(prefix="confluence-mermaid-") as directory:
+            directory_path = Path(directory)
+            for generated in extension.generated_attachments:
+                source_path = directory_path / generated.filename
+                source_path.write_text(generated.content, encoding="utf-8")
+                action, attachment = self._client.upsert_attachment(
+                    page_id=page_id,
+                    file_path=source_path,
+                    comment="Mermaid Diagrams for Confluence source",
+                )
+                uploaded.append(
+                    MarkdownAttachmentResult(
+                        filename=generated.filename,
+                        source_path="<generated:mermaid>",
+                        attachment_id=attachment.id,
+                        action=action,
+                    )
+                )
+        return uploaded
+
+    def _mermaid_extension(self):
+        for extension in self._registry.extensions:
+            if extension.name == "mermaid_diagrams":
+                return extension
+        return None
 
     def _xhtml_to_storage(self, xhtml: str) -> tuple[str, list[str]]:
         wrapped = (

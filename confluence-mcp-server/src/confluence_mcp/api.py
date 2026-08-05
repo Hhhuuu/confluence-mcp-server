@@ -692,6 +692,9 @@ def _builtin_extension_options() -> dict:
     if config.confluence.jira_server_name:
         jira_options["jira_server_name"] = config.confluence.jira_server_name
 
-    if not jira_options:
-        return {}
-    return {"jira_links": jira_options}
+    options: dict = {
+        "mermaid_diagrams": {"enabled": config.confluence.deployment == "server"}
+    }
+    if jira_options:
+        options["jira_links"] = jira_options
+    return options

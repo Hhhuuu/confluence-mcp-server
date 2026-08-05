@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
+import tempfile
 from typing import Any, Sequence
 from urllib.parse import quote
 
@@ -88,11 +89,15 @@ class ConfluenceMarkdownExporter:
             )
 
         root = parse_storage_document(page.body.storage.value)
+        builtin_extension_options = self._options_with_mermaid_attachments(
+            page.id,
+            root,
+        )
         renderer = StorageMarkdownRenderer(
             enabled_extensions=self._enabled_extensions,
             extra_extensions=self._extra_extensions,
             table_mode=self._table_mode,
-            builtin_extension_options=self._builtin_extension_options,
+            builtin_extension_options=builtin_extension_options,
         )
         markdown = renderer.render_document(root)
 
@@ -103,6 +108,36 @@ class ConfluenceMarkdownExporter:
             markdown=markdown,
             warnings=renderer.warnings,
         )
+
+    def _options_with_mermaid_attachments(self, page_id: str, root) -> dict:
+        options = {
+            name: dict(values)
+            for name, values in (self._builtin_extension_options or {}).items()
+        }
+        mermaid_options = options.setdefault("mermaid_diagrams", {})
+        if mermaid_options.get("enabled", True) is False:
+            return options
+
+        filenames: set[str] = set()
+        for element in root.iter():
+            if element.attrib.get("{urn:ac}name") != "mermaid-cloud":
+                continue
+            for child in list(element):
+                if child.attrib.get("{urn:ac}name") == "filename" and child.text:
+                    filenames.add(child.text.strip())
+
+        contents: dict[str, str] = {}
+        if filenames:
+            with tempfile.TemporaryDirectory(prefix="confluence-mermaid-export-") as directory:
+                for filename in filenames:
+                    attachment = self._client.find_attachment_by_filename(page_id, filename)
+                    if attachment is None:
+                        continue
+                    target = Path(directory) / filename
+                    self._client.download_attachment(attachment, target)
+                    contents[filename] = target.read_text(encoding="utf-8")
+        mermaid_options["attachment_contents"] = contents
+        return options
 
     def export_page_tree_to_markdown_files(
         self,

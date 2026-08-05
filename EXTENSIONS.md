@@ -163,6 +163,40 @@ print("hello")
 - Confluence -> Markdown:
   - возвращает `<status color="..." subtle="...">...</status>`
 
+### 7. `mermaid_diagrams`
+
+Назначение:
+
+- поддержка Server/Data Center-версии плагина **Mermaid Diagrams for Confluence**
+  от Stratus Add-ons
+
+Поддерживаемый синтаксис:
+
+````md
+```mermaid
+flowchart LR
+    A --> B
+```
+
+```mermaid {title="Architecture"}
+sequenceDiagram
+    A->>B: Request
+```
+````
+
+Что делает:
+
+- Markdown -> Confluence Server/Data Center:
+  - создаёт plain-text attachment `.mmd` с исходником Mermaid
+  - добавляет macro `mermaid-cloud` с параметрами `filename`, `revision` и `toolbar`
+  - при обновлении версионирует attachment и увеличивает `revision`
+- Confluence -> Markdown:
+  - скачивает исходный attachment
+  - возвращает fenced-блок `mermaid`
+
+Расширение автоматически включается только при `deployment: server`.
+Для Cloud этот attachment-based формат не применяется.
+
 ## Как управлять расширениями
 
 По умолчанию уже включены все встроенные расширения:
@@ -173,6 +207,7 @@ print("hello")
 - `date_element`
 - `jira_links`
 - `status_element`
+- `mermaid_diagrams` (только `deployment: server`)
 
 Если этого достаточно, `enabled_extensions` можно вообще не передавать.
 
