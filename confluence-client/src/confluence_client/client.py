@@ -356,6 +356,7 @@ class ConfluenceClient:
         file_path: str | Path,
         *,
         comment: Optional[str] = None,
+        content_type: Optional[str] = None,
     ) -> AttachmentSummary:
         """
         Загрузить новое вложение на страницу Confluence.
@@ -370,7 +371,11 @@ class ConfluenceClient:
         """
 
         path = Path(file_path).expanduser()
-        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        effective_content_type = (
+            content_type
+            or mimetypes.guess_type(path.name)[0]
+            or "application/octet-stream"
+        )
         data: Dict[str, str] = {"minorEdit": "true"}
         if comment:
             data["comment"] = comment
@@ -380,7 +385,7 @@ class ConfluenceClient:
                 "POST",
                 self._api_path(f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}"),
                 headers={"X-Atlassian-Token": "nocheck"},
-                files={"file": (path.name, stream, content_type)},
+                files={"file": (path.name, stream, effective_content_type)},
                 data=data,
             )
 
@@ -398,6 +403,7 @@ class ConfluenceClient:
         file_path: str | Path,
         *,
         comment: Optional[str] = None,
+        content_type: Optional[str] = None,
     ) -> AttachmentSummary:
         """
         Обновить бинарные данные уже существующего вложения.
@@ -413,7 +419,11 @@ class ConfluenceClient:
         """
 
         path = Path(file_path).expanduser()
-        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        effective_content_type = (
+            content_type
+            or mimetypes.guess_type(path.name)[0]
+            or "application/octet-stream"
+        )
         data: Dict[str, str] = {"minorEdit": "true"}
         if comment:
             data["comment"] = comment
@@ -425,7 +435,7 @@ class ConfluenceClient:
                     f"{_REST_API}/{page_id}{_ATTACHMENT_API_SUFFIX}/{attachment_id}/data"
                 ),
                 headers={"X-Atlassian-Token": "nocheck"},
-                files={"file": (path.name, stream, content_type)},
+                files={"file": (path.name, stream, effective_content_type)},
                 data=data,
             )
 
@@ -442,6 +452,7 @@ class ConfluenceClient:
         file_path: str | Path,
         *,
         comment: Optional[str] = None,
+        content_type: Optional[str] = None,
     ) -> tuple[str, AttachmentSummary]:
         """
         Создать вложение или обновить его, если файл с таким именем уже существует.
@@ -458,8 +469,19 @@ class ConfluenceClient:
         path = Path(file_path).expanduser()
         existing = self.find_attachment_by_filename(page_id, path.name)
         if existing is None:
-            return "created", self.upload_attachment(page_id, path, comment=comment)
-        return "updated", self.update_attachment(page_id, existing.id, path, comment=comment)
+            return "created", self.upload_attachment(
+                page_id,
+                path,
+                comment=comment,
+                content_type=content_type,
+            )
+        return "updated", self.update_attachment(
+            page_id,
+            existing.id,
+            path,
+            comment=comment,
+            content_type=content_type,
+        )
 
     def create_child_page(
         self,

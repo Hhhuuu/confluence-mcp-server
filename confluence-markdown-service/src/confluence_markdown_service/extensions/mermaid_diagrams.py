@@ -110,10 +110,14 @@ class MermaidDiagramsExtension(ConfluenceMarkdownExtension):
 
         macro = ET.Element(f"{{{_AC_URI}}}structured-macro")
         macro.attrib[f"{{{_AC_URI}}}name"] = "mermaid-cloud"
+        macro.attrib[f"{{{_AC_URI}}}schema-version"] = "1"
+        macro.attrib[f"{{{_AC_URI}}}local-id"] = str(uuid4())
         macro.attrib[f"{{{_AC_URI}}}macro-id"] = str(uuid4())
+        macro.attrib["data-layout"] = "default"
         self._append_parameter(macro, "filename", filename)
-        self._append_parameter(macro, "revision", str(self._revisions.get(filename, 1)))
         self._append_parameter(macro, "toolbar", "bottom")
+        self._append_parameter(macro, "zoom", "fit")
+        self._append_parameter(macro, "revision", str(self._revisions.get(filename, 1)))
         return MarkdownImportTransformResult(handled=True, replacement=macro)
 
     def render_macro(self, renderer, element: ET.Element) -> MarkdownRenderResult:

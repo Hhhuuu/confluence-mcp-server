@@ -517,6 +517,7 @@ class ConfluenceMarkdownImporter:
                     page_id=page_id,
                     file_path=source_path,
                     comment="Mermaid Diagrams for Confluence source",
+                    content_type="text/plain",
                 )
                 uploaded.append(
                     MarkdownAttachmentResult(

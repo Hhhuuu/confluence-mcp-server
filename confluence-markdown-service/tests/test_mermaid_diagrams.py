@@ -24,6 +24,7 @@ class FakeMermaidClient:
     def __init__(self) -> None:
         self.updated_storage = ""
         self.uploaded_content = ""
+        self.uploaded_content_type = ""
 
     def create_child_page(self, **kwargs) -> PageData:
         self.updated_storage = kwargs["content"]
@@ -49,8 +50,15 @@ class FakeMermaidClient:
         self.updated_storage = kwargs["content"]
         return PageData(title=kwargs["title"], page_id=kwargs["page_id"], page_url="https://example/100")
 
-    def upsert_attachment(self, page_id: str, file_path: Path, comment: str):
+    def upsert_attachment(
+        self,
+        page_id: str,
+        file_path: Path,
+        comment: str,
+        content_type: str | None = None,
+    ):
         self.uploaded_content = Path(file_path).read_text(encoding="utf-8")
+        self.uploaded_content_type = content_type or ""
         return "updated", AttachmentSummary(id="att-1", title=Path(file_path).name)
 
 
@@ -88,6 +96,7 @@ class MermaidImportTests(unittest.TestCase):
 
         self.assertIn('ac:name="revision">3', client.updated_storage)
         self.assertEqual(client.uploaded_content, "flowchart LR\n    A --> B\n")
+        self.assertEqual(client.uploaded_content_type, "text/plain")
         self.assertEqual(result.attachments[0].filename, "mermaid-diagram-1.mmd")
 
 
