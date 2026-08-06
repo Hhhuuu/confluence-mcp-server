@@ -40,3 +40,5 @@ secrets/*.local.yaml
 # Optional local overrides
 config/app.yaml
 
+# Generated local Kilo Code configurations contain machine-specific paths
+.kilo-generated/

@@ -1,213 +1,139 @@
-# Локальные окружения
+# Локальный запуск на Python 3.10+
 
-Этот документ описывает, как локально поднимать Python-окружения для проекта:
+Проект запускается нативно, без Docker. Для установки и работы MCP требуется
+Python 3.10 или новее: bootstrap и launch-скрипты проверяют версию и
+останавливаются только при запуске под Python 3.9 и старше.
 
-- `.venv` — для HTTP API и обычной ручной отладки
-- `.venv-mcp` — для MCP-режима и проверки project-level `.mcp.json`
+## Автоматическая установка
 
-## 1. Зачем два окружения
+### Windows PowerShell
 
-Мы разделяем окружения, потому что:
+Если репозиторий ещё не скачан:
 
-- для HTTP API достаточно обычного локального Python
-- для MCP у нас есть отдельные зависимости и отдельный сценарий запуска
-- так удобнее не смешивать быстрый dev-цикл API и рабочее окружение MCP
+```powershell
+git clone https://github.com/Hhhuuu/confluence-mcp-server.git C:\Tools\confluence-mcp-server
+Set-Location C:\Tools\confluence-mcp-server
+.\scripts\setup_mcp.ps1
+```
 
-Если хочется, можно жить и в одном окружении, но рекомендуемый вариант для проекта сейчас именно такой:
+Или одной install-командой, если `install_mcp.ps1` уже сохранён локально:
 
-- `.venv`
-- `.venv-mcp`
+```powershell
+.\install_mcp.ps1 -InstallDirectory C:\Tools\confluence-mcp-server
+```
 
-## 2. Структура пакетов
+Для обновления существующего клона и Python-пакетов:
 
-Сейчас локально используются editable installs для этих пакетов:
+```powershell
+.\scripts\install_mcp.ps1 `
+  -InstallDirectory C:\Tools\confluence-mcp-server `
+  -Update `
+  -SetupArguments "-Update", "-SkipConfig"
+```
 
-- `confluence-client`
-- `confluence-pagecreator-service`
-- `confluence-markdown-service`
-- `confluence-mcp-server`
+PowerShell-wrapper ищет Python через `py -3.10`, создаёт `.venv-mcp`, обновляет
+инструменты сборки и устанавливает четыре локальных пакета в editable-режиме.
 
-## 3. Окружение для HTTP API
-
-### Шаг 1. Создать окружение
-
-Из корня проекта:
+### Linux и macOS
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+git clone https://github.com/Hhhuuu/confluence-mcp-server.git ~/tools/confluence-mcp-server
+cd ~/tools/confluence-mcp-server
+./scripts/setup_mcp.sh
 ```
 
-### Шаг 2. Обновить базовые инструменты
+Обновление:
 
 ```bash
-python -m pip install --upgrade pip setuptools wheel
+./scripts/install_mcp.sh --install-directory "$HOME/tools/confluence-mcp-server" --update -- --update --skip-config
 ```
 
-### Шаг 3. Установить локальные пакеты
-
-Важно: в текущей среде `pip` может пытаться выходить в сеть за build dependencies. Поэтому для локальной установки лучше использовать `--no-build-isolation`.
+Скрипт автоматически ищет `python3.10`, `python3` или `python` версии 3.10+.
+Проверить активную версию можно так:
 
 ```bash
-python -m pip install --no-build-isolation \
-  -e confluence-client \
-  -e confluence-pagecreator-service \
-  -e confluence-markdown-service \
-  -e confluence-mcp-server
+python3 --version
 ```
 
-### Шаг 4. Запустить локальный HTTP API
+## Неинтерактивная настройка
+
+Токен безопаснее передавать через переменную окружения, чтобы он не попадал в
+историю команд.
+
+PowerShell:
+
+```powershell
+$env:CONFLUENCE_TOKEN = "pat-value"
+.\scripts\setup_mcp.ps1 -BaseUrl "https://confluence.company.local" -SpaceKey "DOC" -ApiTokenEnv CONFLUENCE_TOKEN -NonInteractive
+```
+
+Bash:
 
 ```bash
-cd confluence-mcp-server
-uvicorn confluence_mcp.api:app --app-dir src --reload
+export CONFLUENCE_TOKEN='pat-value'
+./scripts/setup_mcp.sh \
+  --base-url 'https://confluence.company.local' \
+  --space-key 'DOC' \
+  --api-token-env CONFLUENCE_TOKEN \
+  --non-interactive
 ```
 
-После этого API будет доступен по адресу:
+## Пользовательские шаблоны
 
-```text
-http://127.0.0.1:8000
+Встроенные шаблоны:
+
+- `config/app.server.yaml.template`;
+- `secrets/confluence.server.yaml.template`.
+
+Можно передать любые собственные файлы через `--app-template` и
+`--confluence-template`. Bootstrap заменяет в них:
+
+- `${CONFLUENCE_BASE_URL}`;
+- `${CONFLUENCE_SPACE_KEY}`;
+- `${CONFLUENCE_API_TOKEN}`.
+
+Пример для Windows:
+
+```powershell
+.\scripts\setup_mcp.ps1 `
+  -AppTemplate "C:\McpTemplates\app.yaml.template" `
+  -ConfluenceTemplate "C:\McpTemplates\confluence.yaml.template"
 ```
 
-### Шаг 5. Быстрая проверка
+Результат всегда записывается в `config/app.yaml` и
+`secrets/confluence.yaml`. Эти локальные файлы исключены из Git.
+
+Bootstrap также создаёт в `.kilo-generated` отдельные конфигурации для
+расширения Kilo Code 7.49+ (`kilo-vscode.*.json`) и Kilo CLI
+(`kilo-cli.*.json`). Подробности находятся в `MCP_CONNECTION_GUIDE.md`.
+
+## Установка или обновление только Python-пакетов
+
+Windows:
+
+```powershell
+.\scripts\setup_mcp.ps1 -Update -SkipConfig
+```
+
+Linux/macOS:
 
 ```bash
-curl http://127.0.0.1:8000/health
+./scripts/setup_mcp.sh --update --skip-config
 ```
 
-## 4. Окружение для MCP
+## Запуск MCP
 
-Для MCP нужен Python `3.10+`.
+Windows:
 
-Рекомендуемый вариант:
-
-```bash
-python3.12 -m venv .venv-mcp
-source .venv-mcp/bin/activate
+```powershell
+.\scripts\run_mcp.ps1
 ```
 
-Если `python3.12` недоступен, можно использовать любой Python `3.10+`.
-
-### Шаг 2. Обновить инструменты сборки
-
-```bash
-python -m pip install --upgrade pip setuptools wheel
-```
-
-### Шаг 3. Установить локальные пакеты
-
-```bash
-python -m pip install --no-build-isolation \
-  -e confluence-client \
-  -e confluence-pagecreator-service \
-  -e confluence-markdown-service \
-  -e confluence-mcp-server
-```
-
-### Шаг 4. Запустить MCP вручную
-
-Из корня проекта:
+Linux/macOS:
 
 ```bash
 ./scripts/run_mcp.sh
 ```
 
-## 5. Project-level `.mcp.json`
-
-В корне проекта лежит файл:
-
-- `.mcp.json`
-
-Он запускает MCP так:
-
-```json
-{
-  "mcpServers": {
-    "confluence-mcp": {
-      "command": "./scripts/run_mcp.sh"
-    }
-  }
-}
-```
-
-Почему это удобнее:
-
-- launcher сам находит корень проекта
-- внутри него автоматически вычисляются абсолютные пути до `.venv-mcp`, `config/app.yaml` и `secrets/confluence.yaml`
-- при переносе проекта на другой компьютер не нужно вручную править пути в `.mcp.json`
-
-Если клиент поддерживает project-level `.mcp.json`, обычно этого достаточно.
-
-## 6. Конфиг и секреты
-
-Перед запуском проверь, что созданы:
-
-- `config/app.yaml`
-- `secrets/confluence.yaml`
-
-Шаблоны:
-
-- `config/app.yaml.example`
-- `secrets/confluence.yaml.example`
-
-## 7. Если после rename что-то перестало импортироваться
-
-После серьёзных переименований или переноса пакетов лучше повторно выполнить editable install:
-
-```bash
-source .venv/bin/activate
-python -m pip install --no-build-isolation \
-  -e confluence-client \
-  -e confluence-pagecreator-service \
-  -e confluence-markdown-service \
-  -e confluence-mcp-server
-```
-
-И отдельно для MCP:
-
-```bash
-source .venv-mcp/bin/activate
-python -m pip install --no-build-isolation \
-  -e confluence-client \
-  -e confluence-pagecreator-service \
-  -e confluence-markdown-service \
-  -e confluence-mcp-server
-```
-
-## 8. Как понять, что используется правильный Python
-
-Проверь:
-
-```bash
-which python
-python --version
-python -m pip --version
-```
-
-Для MCP удобно проверять так:
-
-```bash
-.venv-mcp/bin/python --version
-.venv-mcp/bin/python -m pip --version
-```
-
-## 9. Если `pip` пытается выйти в интернет
-
-В нашей среде это может происходить из-за build isolation.
-
-Используй:
-
-```bash
-python -m pip install --no-build-isolation ...
-```
-
-Это особенно важно, если сеть ограничена или PyPI недоступен.
-
-## 10. Рекомендуемый порядок для нового разработчика
-
-1. Создать `config/app.yaml` и `secrets/confluence.yaml` из `.example`
-2. Поднять `.venv`
-3. Проверить HTTP API
-4. Поднять `.venv-mcp`
-5. Проверить запуск `confluence_mcp`
-6. Только после этого подключать `.mcp.json` в клиенте
+Для нестандартного расположения YAML можно задать переменные
+`PAGECREATOR_CONFIG_PATH` и `PAGECREATOR_SECRETS_PATH` до запуска.

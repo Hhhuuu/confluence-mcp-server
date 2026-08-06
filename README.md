@@ -4,10 +4,11 @@
 
 ## Дополнительная документация
 
-- `scripts/bootstrap_mcp.py` — автоматическая первичная настройка `app.yaml`, `secrets` и MCP snippets
+- `scripts/setup_mcp.ps1` / `scripts/setup_mcp.sh` — полная установка и настройка под Python 3.10+
+- `scripts/install_mcp.ps1` / `scripts/install_mcp.sh` — клонирование или обновление репозитория с последующей настройкой
 - `EXTERNAL_CONSUMERS.md` — инструкция для внешних потребителей MCP-сервера
-- `LOCAL_ENVIRONMENTS.md` — локальная разработка, `.venv` и запуск без Docker
-- `DOCKER_RUN.md` — запуск HTTP API и MCP в Docker
+- `LOCAL_ENVIRONMENTS.md` — установка, шаблоны конфигурации и нативный запуск
+- `MCP_CONNECTION_GUIDE.md` — конфигурации Kilo Code 7.49+ и Kilo CLI для Windows, Linux и macOS
 - `MARKDOWN_BRIDGE_PLAN.md` — план развития markdown bridge
 - `EXTENSIONS.md` — система markdown-расширений, встроенные плагины и инструкция по добавлению своих
 - `KNOWLEDGE_MODEL.md` — модель знаний проекта для анализа, поиска и автоматизации
@@ -22,11 +23,17 @@
 
 ## Локальная разработка
 
-Для локальной разработки используем editable installs:
+Проект требует Python 3.10 или новее. Автоматическая установка в
+`.venv-mcp`:
 
 ```bash
-cd confluence-mcp-server
-pip install -r requirements-dev.txt
+./scripts/setup_mcp.sh
+```
+
+В Windows PowerShell:
+
+```powershell
+.\scripts\setup_mcp.ps1
 ```
 
 ## Локальный API для ручной проверки
@@ -152,7 +159,9 @@ Cloud для этого использует REST endpoint `content/{id}/move`, 
 В `create_pages` параметр `content` по умолчанию считается Markdown. Готовый
 Confluence Storage Format можно передать с `content_format="storage"`.
 
-В корне рабочей области лежит файл `.mcp.json`, который подключает сервер `confluence-mcp` через отдельное окружение `.venv-mcp`.
+Bootstrap генерирует в `.kilo-generated` отдельные конфигурации Kilo Code
+7.49+ и Kilo CLI для Windows, Linux и macOS. Они используют абсолютный путь до
+Python 3.10+ из `.venv-mcp` и локальные пути к YAML.
 
 Команда запуска для stdio-режима:
 
@@ -167,55 +176,6 @@ cd confluence-mcp-server
 source .venv-mcp/bin/activate
 python run_mcp_http.py
 ```
-
-## Docker
-
-Сервер можно собрать в Docker-образ.
-
-Сборка:
-
-```bash
-cd confluence-mcp-server
-docker build -t confluence-mcp:local .
-```
-
-### Режим 1. HTTP API для ручной проверки
-
-```bash
-docker run --rm -p 8000:8000 \
-  -e PAGECREATOR_RUNTIME_MODE=http-api \
-  -v "$(pwd)/config:/app/config:ro" \
-  -v "$(pwd)/secrets:/app/secrets:ro" \
-  confluence-mcp:local
-```
-
-### Режим 2. MCP over HTTP
-
-```bash
-docker run --rm -p 8000:8000 \
-  -e PAGECREATOR_RUNTIME_MODE=mcp-http \
-  -e PAGECREATOR_MCP_HOST=0.0.0.0 \
-  -e PAGECREATOR_MCP_PORT=8000 \
-  -v "$(pwd)/config:/app/config:ro" \
-  -v "$(pwd)/secrets:/app/secrets:ro" \
-  confluence-mcp:local
-```
-
-### Режим 3. MCP stdio
-
-Для `stdio`-режима контейнер обычно запускается самим MCP-клиентом.
-
-Пример ручного запуска:
-
-```bash
-docker run --rm -i \
-  -e PAGECREATOR_RUNTIME_MODE=mcp-stdio \
-  -v "$(pwd)/config:/app/config:ro" \
-  -v "$(pwd)/secrets:/app/secrets:ro" \
-  confluence-mcp:local
-```
-
-Секреты в образ не вшиваются: файл `secrets/confluence.yaml` исключён через `.dockerignore`.
 
 ## Текущие ограничения
 

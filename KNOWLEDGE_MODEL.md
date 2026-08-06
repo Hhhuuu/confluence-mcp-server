@@ -22,7 +22,7 @@
 - клиент для Confluence REST API
 - сервис создания иерархий страниц
 - сервис экспорта и импорта Markdown
-- Docker-режимы запуска
+- нативные launcher-скрипты для Windows, Linux и macOS
 
 Проект включает несколько внутренних пакетов:
 
@@ -262,7 +262,7 @@
 - `config/app.yaml.example`
 - `secrets/confluence.yaml`
 - `.mcp.json`
-- Docker env variables
+- переменные окружения launcher-скриптов
 
 Обязательные атрибуты:
 
@@ -303,7 +303,7 @@
 Связи:
 
 - принадлежит `confluence_mcp.launch`
-- используется Docker и локальными launcher-скриптами
+- используется локальными launcher-скриптами
 
 Частота изменений:
 
@@ -374,7 +374,7 @@
 
 - `README.md`
 - `EXTERNAL_CONSUMERS.md`
-- `DOCKER_RUN.md`
+- `MCP_CONNECTION_GUIDE.md`
 - `LOCAL_ENVIRONMENTS.md`
 - `MARKDOWN_BRIDGE_PLAN.md`
 
@@ -416,7 +416,7 @@
 - список MCP tools
 - список основных DTO
 - основные ограничения и known issues
-- Docker и launcher схемы
+- Python launcher-схемы для поддерживаемых ОС
 - docs для внешних потребителей
 
 ### 4.3 Динамические знания
@@ -440,7 +440,7 @@
 Также нужны знания о runtime:
 
 - как локальный launcher находит конфиг и секреты
-- как Docker запускает один образ в нескольких режимах
+- как launch-скрипты проверяют и запускают Python 3.10+
 - как `.mcp.json` подключает сервер
 
 ## 6. Знания о коде
@@ -491,7 +491,7 @@
 - как делать editable installs
 - как запускать API локально
 - как запускать MCP локально
-- как собирать и запускать Docker
+- как устанавливать и обновлять окружение Python 3.10+
 - какие документы считать основными при онбординге внешнего потребителя
 
 ## 9. Минимальный набор данных, достаточный для ориентации
@@ -503,7 +503,7 @@
 3. Точки входа:
    - HTTP API
    - MCP
-   - Docker launcher
+   - Windows и Unix launcher
 4. Основные сценарии:
    - page creation
    - page read/search
@@ -517,7 +517,7 @@
 9. Основные документы:
    - `README.md`
    - `EXTERNAL_CONSUMERS.md`
-   - `DOCKER_RUN.md`
+   - `MCP_CONNECTION_GUIDE.md`
    - `LOCAL_ENVIRONMENTS.md`
 
 ## 10. Итоговая структура базы знаний проекта
@@ -563,7 +563,7 @@
 ### 10.6 Operations layer
 
 - local run instructions
-- Docker run instructions
+- native Python run instructions
 - archive/deploy instructions
 
 ## 11. Что можно поддерживать автоматически

@@ -1,0 +1,9 @@
+confluence:
+  base_url: "${CONFLUENCE_BASE_URL}"
+  deployment: "server"
+  verify_ssl: false
+  default_space_key: "${CONFLUENCE_SPACE_KEY}"
+
+  # При необходимости раскомментируй и задай параметры Jira macro:
+  # jira_server_id: "jira-server-id"
+  # jira_server_name: "Jira"

@@ -40,9 +40,10 @@
 - `config/app.yaml.example`
 - `secrets/confluence.yaml.example`
 - `.mcp.json`
-- `Dockerfile`
-- `.dockerignore`
 - `scripts/run_mcp.sh`
+- `scripts/run_mcp.ps1`
+- `scripts/setup_mcp.sh`
+- `scripts/setup_mcp.ps1`
 
 Реальные секреты индексировать нельзя.
 
@@ -52,7 +53,7 @@
 
 - `README.md`
 - `EXTERNAL_CONSUMERS.md`
-- `DOCKER_RUN.md`
+- `MCP_CONNECTION_GUIDE.md`
 - `LOCAL_ENVIRONMENTS.md`
 - `DEPLOY_FROM_ARCHIVE.md`
 - `MARKDOWN_BRIDGE_PLAN.md`
@@ -80,7 +81,7 @@
 
 - `README.md`
 - `EXTERNAL_CONSUMERS.md`
-- `DOCKER_RUN.md`
+- `MCP_CONNECTION_GUIDE.md`
 - `LOCAL_ENVIRONMENTS.md`
 - `.mcp.json`
 - `config/app.yaml.example`
@@ -149,7 +150,7 @@
 - local HTTP runtime
 - MCP stdio runtime
 - MCP HTTP runtime
-- Docker launch modes
+- native Python launch modes for Windows, Linux and macOS
 
 ### 4.5 Known issues / ограничения
 
@@ -222,7 +223,7 @@
 - `page_read`
 - `markdown_export`
 - `markdown_import`
-- `docker`
+- `python310`
 - `mcp`
 - `http_api`
 
@@ -250,7 +251,7 @@
 
 - “как публиковать markdown в confluence”
 - “где обрабатываются неизвестные макросы”
-- “как работает docker запуск”
+- “как работает запуск на Python 3.10+”
 
 ### 7.3 Symbol / code-aware search
 
@@ -273,7 +274,7 @@
 
 - page creator
 - markdown bridge
-- runtime / docker
+- runtime / native launch
 - auth / config
 
 ### 7.5 Search by dependency / graph
@@ -295,7 +296,7 @@
 - page creator
 - markdown bridge
 - transport/API
-- runtime/docker
+- runtime/native launch
 - config/auth
 
 ### Шаг 2. Выбрать пакет
@@ -328,7 +329,7 @@
 
 - `README.md`
 - `EXTERNAL_CONSUMERS.md`
-- `DOCKER_RUN.md`
+- `MCP_CONNECTION_GUIDE.md`
 
 ## 9. Как избежать переполнения контекста
 
@@ -384,7 +385,7 @@
 - Python code
 - docs
 - launcher scripts
-- Dockerfile
+- launcher and setup scripts
 - config examples
 
 Можно реже обновлять:
@@ -447,7 +448,7 @@ Git / Workspace
 
 - `README.md`
 - `EXTERNAL_CONSUMERS.md`
-- `DOCKER_RUN.md`
+- `MCP_CONNECTION_GUIDE.md`
 - `confluence_mcp/api.py`
 - `confluence_mcp/mcp_server.py`
 - `confluence_mcp/runtime.py`
