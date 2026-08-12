@@ -194,6 +194,36 @@ def build_comment_body_storage(
     return "".join(parts)
 
 
+def build_page_comment_body_storage(
+    suggestions: Iterable[ProofreadSuggestion],
+    *,
+    title: str = "Проверка орфографии и пунктуации",
+) -> str:
+    """Render a storage-format page comment with multiple proofreading suggestions."""
+
+    suggestion_values = list(suggestions)
+    parts = [f"<p><strong>{escape(title)}</strong></p>"]
+    if not suggestion_values:
+        parts.append("<p>Замечаний не найдено.</p>")
+        return "".join(parts)
+
+    parts.append("<ol>")
+    for suggestion in suggestion_values:
+        parts.append("<li>")
+        parts.append(f"<p><strong>Фрагмент:</strong> <code>{escape(suggestion.text_selection)}</code></p>")
+        parts.append(f"<p>{escape(suggestion.message)}</p>")
+        if suggestion.replacements:
+            replacements = ", ".join(
+                f"<code>{escape(value)}</code>" for value in suggestion.replacements
+            )
+            parts.append(f"<p><strong>Варианты:</strong> {replacements}</p>")
+        if suggestion.rule_id:
+            parts.append(f"<p><strong>Правило LanguageTool:</strong> <code>{escape(suggestion.rule_id)}</code></p>")
+        parts.append("</li>")
+    parts.append("</ol>")
+    return "".join(parts)
+
+
 def _iter_occurrences(text: str, needle: str):
     start = 0
     while True:

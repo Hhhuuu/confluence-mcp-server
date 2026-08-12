@@ -40,6 +40,7 @@ _SPACE_API = "/rest/api/space"
 _VIEW_PAGE_PATH = "/wiki/pages/viewpage.action?pageId="
 _ATTACHMENT_API_SUFFIX = "/child/attachment"
 _CHILD_PAGE_API_SUFFIX = "/child/page"
+_CHILD_COMMENT_API_SUFFIX = "/child/comment"
 
 
 @dataclass(frozen=True)
@@ -552,6 +553,39 @@ class ConfluenceClient:
         response = self._request(
             "POST",
             self._api_path("/api/v2/inline-comments"),
+            json=payload,
+        )
+        return response.json()
+
+    def create_page_comment(
+        self,
+        *,
+        page_id: str,
+        body_storage: str,
+    ) -> Dict[str, Any]:
+        """
+        Создать обычный комментарий к странице без привязки к фрагменту текста.
+
+        Используется как fallback для Confluence Server/Data Center, где
+        REST API v2 inline comments недоступен.
+        """
+
+        payload = {
+            "type": "comment",
+            "container": {
+                "type": "page",
+                "id": str(page_id),
+            },
+            "body": {
+                "storage": {
+                    "value": body_storage,
+                    "representation": "storage",
+                }
+            },
+        }
+        response = self._request(
+            "POST",
+            self._api_path(f"{_REST_API}/{page_id}{_CHILD_COMMENT_API_SUFFIX}"),
             json=payload,
         )
         return response.json()

@@ -16,6 +16,7 @@ from mcp.server.fastmcp import FastMCP
 from confluence_pagecreator_service import CreatePagesRequest, load_app_config
 
 from .proofread import (
+    build_page_comment_body_storage,
     check_text_with_languagetool,
     markdown_to_plain_text,
 )
@@ -489,7 +490,8 @@ def proofread_confluence_page(
     name="add_proofread_inline_comments",
     description=(
         "Проверить страницу Confluence через LanguageTool и добавить найденные "
-        "замечания как inline comments. Этот tool пишет комментарии в Confluence."
+        "замечания как inline comments в Cloud или обычный page comment в Server/Data Center. "
+        "Этот tool пишет комментарии в Confluence."
     ),
 )
 def add_proofread_inline_comments(
@@ -512,6 +514,37 @@ def add_proofread_inline_comments(
             languagetool_url=languagetool_url or os.getenv("LANGUAGETOOL_URL", "http://127.0.0.1:8010"),
             max_suggestions=max_comments,
         )
+
+        deployment = getattr(getattr(client, "_config", None), "deployment", "cloud")
+        if deployment != "cloud":
+            suggestions = result.suggestions[:max_comments]
+            if not suggestions:
+                return {
+                    "page_id": exported.page_id,
+                    "title": exported.title,
+                    "language": language,
+                    "comment_mode": "page_comment",
+                    "created_count": 0,
+                    "failed_count": 0,
+                    "suggestion_count": 0,
+                    "comment": None,
+                    "truncated": result.truncated,
+                }
+            created = client.create_page_comment(
+                page_id=exported.page_id,
+                body_storage=build_page_comment_body_storage(suggestions),
+            )
+            return {
+                "page_id": exported.page_id,
+                "title": exported.title,
+                "language": language,
+                "comment_mode": "page_comment",
+                "created_count": 1,
+                "failed_count": 0,
+                "suggestion_count": len(suggestions),
+                "comment": created,
+                "truncated": result.truncated,
+            }
 
         created_comments = []
         failed_comments = []
@@ -542,6 +575,7 @@ def add_proofread_inline_comments(
             "page_id": exported.page_id,
             "title": exported.title,
             "language": language,
+            "comment_mode": "inline_comment",
             "created_count": len(created_comments),
             "failed_count": len(failed_comments),
             "created_comments": created_comments,

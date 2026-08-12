@@ -195,7 +195,9 @@ python run_mcp_http.py
 
 ## Proofread + inline comments
 
-Сервер умеет проверять орфографию и пунктуацию страницы через LanguageTool и добавлять замечания как Confluence inline comments.
+Сервер умеет проверять орфографию и пунктуацию страницы через LanguageTool и добавлять замечания в Confluence.
+В Confluence Cloud замечания пишутся как inline comments к найденным словам и фразам.
+В Confluence Server/Data Center, где REST API v2 inline comments недоступен, создаётся обычный комментарий к странице со списком замечаний.
 
 Рекомендуемый порядок:
 
@@ -233,7 +235,8 @@ export LANGUAGETOOL_URL="http://127.0.0.1:8010"
 }
 ```
 
-`add_proofread_inline_comments` повторно проверяет страницу и пишет inline comments в Confluence:
+`add_proofread_inline_comments` повторно проверяет страницу и пишет комментарии в Confluence.
+Для Cloud это inline comments, для Server/Data Center — один обычный page comment:
 
 ```json
 {
@@ -244,5 +247,6 @@ export LANGUAGETOOL_URL="http://127.0.0.1:8010"
 ```
 
 Inline comments создаются через Confluence Cloud REST API v2 `POST /wiki/api/v2/inline-comments` и привязываются к тексту через `inlineCommentProperties.textSelection`. Если одинаковый фрагмент встречается несколько раз, используется вычисленный `textSelectionMatchIndex`.
+Fallback page comment создаётся через REST content comments endpoint `POST /rest/api/content/{page_id}/child/comment`.
 
 Важно: `add_proofread_inline_comments` пишет данные в Confluence. Для первой проверки используйте `proofread_confluence_page`.

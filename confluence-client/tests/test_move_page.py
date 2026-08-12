@@ -152,6 +152,34 @@ class InlineCommentTests(unittest.TestCase):
                 text_selection_match_index=0,
             )
 
+    def test_creates_page_comment_payload_for_server_deployment(self) -> None:
+        client = RecordingServerClient()
+
+        result = client.create_page_comment(
+            page_id="123",
+            body_storage="<p>Общий комментарий</p>",
+        )
+
+        self.assertEqual(result["id"], "123")
+        method, path, kwargs = client.requests[-1]
+        self.assertEqual((method, path), ("POST", "/rest/api/content/123/child/comment"))
+        self.assertEqual(
+            kwargs["json"],
+            {
+                "type": "comment",
+                "container": {
+                    "type": "page",
+                    "id": "123",
+                },
+                "body": {
+                    "storage": {
+                        "value": "<p>Общий комментарий</p>",
+                        "representation": "storage",
+                    }
+                },
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

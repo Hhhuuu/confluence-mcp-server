@@ -1,9 +1,9 @@
 ---
-description: Добавить inline comments по ошибкам LanguageTool
+description: Добавить комментарии по ошибкам LanguageTool
 agent: code
 ---
 
-Проверь страницу Confluence и добавь найденные замечания как inline comments.
+Проверь страницу Confluence и добавь найденные замечания как комментарии. В Confluence Cloud используй inline comments, в Confluence Server/Data Center ожидай fallback в один обычный комментарий к странице.
 
 Используй MCP tool:
 - server_name: `confluence-mcp`

@@ -6,6 +6,7 @@ import unittest
 
 from confluence_mcp.proofread import (
     build_comment_body_storage,
+    build_page_comment_body_storage,
     markdown_to_plain_text,
     suggestion_from_languagetool_match,
 )
@@ -51,6 +52,39 @@ class ProofreadHelperTests(unittest.TestCase):
         self.assertIn("&lt;тег&gt;", body)
         self.assertIn("&lt;ошибка&gt;", body)
         self.assertIn("&lt;правка&gt;", body)
+
+    def test_page_comment_body_contains_all_suggestions(self) -> None:
+        text = "Ошибка тут. Ошибка здесь."
+        first = suggestion_from_languagetool_match(
+            text,
+            {
+                "offset": 0,
+                "length": len("Ошибка"),
+                "message": "Возможная ошибка.",
+                "replacements": [{"value": "Правка"}],
+                "rule": {"id": "TEST_RULE"},
+            },
+        )
+        second = suggestion_from_languagetool_match(
+            text,
+            {
+                "offset": text.rfind("Ошибка"),
+                "length": len("Ошибка"),
+                "message": "Повторная ошибка.",
+                "replacements": [{"value": "Другая правка"}],
+                "rule": {"id": "SECOND_RULE"},
+            },
+        )
+
+        assert first is not None
+        assert second is not None
+        body = build_page_comment_body_storage([first, second])
+
+        self.assertIn("<ol>", body)
+        self.assertIn("Возможная ошибка.", body)
+        self.assertIn("Повторная ошибка.", body)
+        self.assertIn("TEST_RULE", body)
+        self.assertIn("SECOND_RULE", body)
 
 
 if __name__ == "__main__":
