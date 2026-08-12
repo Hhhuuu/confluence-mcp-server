@@ -146,6 +146,31 @@ python3 scripts/bootstrap_mcp.py --skip-config --linux-project-root /opt/conflue
 python3 scripts/bootstrap_mcp.py --skip-config --macos-project-root /Users/user/Tools/confluence-mcp-server
 ```
 
+## Slash-команды Kilo
+
+В проекте есть готовые workflow-файлы для Kilo slash commands:
+
+```text
+.kilo/commands/confluence-*.md
+```
+
+Если открыть этот репозиторий в Kilo, команды появятся в чате через `/`, например:
+
+```text
+/confluence-help
+/confluence-proofread-page
+/confluence-add-proofread-comments
+/confluence-get-page
+/confluence-export-page-markdown
+```
+
+Каждая slash-команда является тонкой оберткой над соответствующим MCP tool сервера
+`confluence-mcp`. Для рабочего проекта вне этого репозитория скопируй каталог
+`.kilo/commands` в корень нужного проекта или в глобальный каталог
+`~/.config/kilo/commands`.
+
+После добавления команд перезапусти окно VS Code/Kilo или обнови список команд.
+
 ## Проверка в Kilo
 
 1. Открой рабочий проект, где создан `.kilocode/mcp.json`.
