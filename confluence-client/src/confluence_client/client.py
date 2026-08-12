@@ -517,6 +517,45 @@ class ConfluenceClient:
         result = ConfluencePageResponse.model_validate(response.json())
         return self._to_page_data(result)
 
+    def create_inline_comment(
+        self,
+        *,
+        page_id: str,
+        body_storage: str,
+        text_selection: str,
+        text_selection_match_count: int,
+        text_selection_match_index: int,
+    ) -> Dict[str, Any]:
+        """
+        Создать inline comment, привязанный к фрагменту текста страницы.
+
+        Работает через Confluence Cloud REST API v2.
+        """
+
+        if self._config.deployment != "cloud":
+            raise ConfluenceRequestError(
+                "Inline comments через REST API v2 поддержаны только для Confluence Cloud."
+            )
+
+        payload = {
+            "pageId": str(page_id),
+            "body": {
+                "representation": "storage",
+                "value": body_storage,
+            },
+            "inlineCommentProperties": {
+                "textSelection": text_selection,
+                "textSelectionMatchCount": text_selection_match_count,
+                "textSelectionMatchIndex": text_selection_match_index,
+            },
+        }
+        response = self._request(
+            "POST",
+            self._api_path("/api/v2/inline-comments"),
+            json=payload,
+        )
+        return response.json()
+
     def update_page(
         self,
         title: str,

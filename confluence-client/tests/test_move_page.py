@@ -107,5 +107,51 @@ class MovePageServerTests(unittest.TestCase):
         )
 
 
+class InlineCommentTests(unittest.TestCase):
+    def test_creates_cloud_inline_comment_payload(self) -> None:
+        client = RecordingServerClient()
+        client._api_prefix = "/wiki"
+        client._config = SimpleNamespace(deployment="cloud")
+
+        result = client.create_inline_comment(
+            page_id="123",
+            body_storage="<p>Комментарий</p>",
+            text_selection="ошибка",
+            text_selection_match_count=2,
+            text_selection_match_index=1,
+        )
+
+        self.assertEqual(result["id"], "123")
+        method, path, kwargs = client.requests[-1]
+        self.assertEqual((method, path), ("POST", "/wiki/api/v2/inline-comments"))
+        self.assertEqual(
+            kwargs["json"],
+            {
+                "pageId": "123",
+                "body": {
+                    "representation": "storage",
+                    "value": "<p>Комментарий</p>",
+                },
+                "inlineCommentProperties": {
+                    "textSelection": "ошибка",
+                    "textSelectionMatchCount": 2,
+                    "textSelectionMatchIndex": 1,
+                },
+            },
+        )
+
+    def test_rejects_inline_comments_for_server_deployment(self) -> None:
+        client = RecordingServerClient()
+
+        with self.assertRaisesRegex(ConfluenceRequestError, "Confluence Cloud"):
+            client.create_inline_comment(
+                page_id="123",
+                body_storage="<p>Комментарий</p>",
+                text_selection="ошибка",
+                text_selection_match_count=1,
+                text_selection_match_index=0,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -191,3 +191,58 @@ python run_mcp_http.py
 2. Затем `confluence-client`
 3. Затем `confluence-markdown-service`
 4. После этого собираем `confluence-mcp-server`
+
+
+## Proofread + inline comments
+
+Сервер умеет проверять орфографию и пунктуацию страницы через LanguageTool и добавлять замечания как Confluence inline comments.
+
+Рекомендуемый порядок:
+
+1. Поднять LanguageTool server.
+2. Вызвать `proofread_confluence_page` и посмотреть предложения без записи.
+3. Если результат подходит, вызвать `add_proofread_inline_comments`.
+
+Пример запуска LanguageTool локально через Docker:
+
+```bash
+docker run --rm -p 8010:8010 silviof/docker-languagetool
+```
+
+URL по умолчанию:
+
+```text
+http://127.0.0.1:8010
+```
+
+Можно переопределить:
+
+```bash
+export LANGUAGETOOL_URL="http://127.0.0.1:8010"
+```
+
+### MCP tools
+
+`proofread_confluence_page` только проверяет страницу и возвращает предложения:
+
+```json
+{
+  "page_id": "123456",
+  "language": "ru-RU",
+  "max_suggestions": 20
+}
+```
+
+`add_proofread_inline_comments` повторно проверяет страницу и пишет inline comments в Confluence:
+
+```json
+{
+  "page_id": "123456",
+  "language": "ru-RU",
+  "max_comments": 20
+}
+```
+
+Inline comments создаются через Confluence Cloud REST API v2 `POST /wiki/api/v2/inline-comments` и привязываются к тексту через `inlineCommentProperties.textSelection`. Если одинаковый фрагмент встречается несколько раз, используется вычисленный `textSelectionMatchIndex`.
+
+Важно: `add_proofread_inline_comments` пишет данные в Confluence. Для первой проверки используйте `proofread_confluence_page`.

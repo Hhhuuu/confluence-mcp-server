@@ -15,6 +15,10 @@ from confluence_markdown_service import (
 from mcp.server.fastmcp import FastMCP
 from confluence_pagecreator_service import CreatePagesRequest, load_app_config
 
+from .proofread import (
+    check_text_with_languagetool,
+    markdown_to_plain_text,
+)
 from .runtime import (
     load_runtime_client,
     load_runtime_service,
@@ -435,6 +439,115 @@ def update_page_from_markdown_file(
             title=title,
         )
         return result.model_dump(mode="json")
+    finally:
+        client.close()
+
+
+@mcp.tool(
+    name="proofread_confluence_page",
+    description=(
+        "Проверить орфографию и пунктуацию страницы Confluence через LanguageTool "
+        "без записи комментариев."
+    ),
+)
+def proofread_confluence_page(
+    page_id: str,
+    language: str = "ru-RU",
+    max_suggestions: int = 20,
+    languagetool_url: Optional[str] = None,
+) -> dict:
+    client, _ = load_runtime_client()
+    try:
+        exporter = ConfluenceMarkdownExporter(
+            client,
+            builtin_extension_options=_builtin_extension_options(),
+        )
+        exported = exporter.export_page_to_markdown(page_id)
+        plain_text = markdown_to_plain_text(exported.markdown)
+        result = check_text_with_languagetool(
+            plain_text,
+            language=language,
+            languagetool_url=languagetool_url or os.getenv("LANGUAGETOOL_URL", "http://127.0.0.1:8010"),
+            max_suggestions=max_suggestions,
+        )
+        payload = result.to_dict()
+        payload.update(
+            {
+                "page_id": exported.page_id,
+                "title": exported.title,
+                "space_key": exported.space_key,
+                "warnings": exported.warnings,
+                "dry_run": True,
+            }
+        )
+        return payload
+    finally:
+        client.close()
+
+
+@mcp.tool(
+    name="add_proofread_inline_comments",
+    description=(
+        "Проверить страницу Confluence через LanguageTool и добавить найденные "
+        "замечания как inline comments. Этот tool пишет комментарии в Confluence."
+    ),
+)
+def add_proofread_inline_comments(
+    page_id: str,
+    language: str = "ru-RU",
+    max_comments: int = 20,
+    languagetool_url: Optional[str] = None,
+) -> dict:
+    client, _ = load_runtime_client()
+    try:
+        exporter = ConfluenceMarkdownExporter(
+            client,
+            builtin_extension_options=_builtin_extension_options(),
+        )
+        exported = exporter.export_page_to_markdown(page_id)
+        plain_text = markdown_to_plain_text(exported.markdown)
+        result = check_text_with_languagetool(
+            plain_text,
+            language=language,
+            languagetool_url=languagetool_url or os.getenv("LANGUAGETOOL_URL", "http://127.0.0.1:8010"),
+            max_suggestions=max_comments,
+        )
+
+        created_comments = []
+        failed_comments = []
+        for suggestion in result.suggestions[:max_comments]:
+            try:
+                created = client.create_inline_comment(
+                    page_id=exported.page_id,
+                    body_storage=suggestion.comment_body_storage,
+                    text_selection=suggestion.text_selection,
+                    text_selection_match_count=suggestion.text_selection_match_count,
+                    text_selection_match_index=suggestion.text_selection_match_index,
+                )
+                created_comments.append(
+                    {
+                        "suggestion": suggestion.to_dict(),
+                        "comment": created,
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001 - возвращаем частичный результат пользователю
+                failed_comments.append(
+                    {
+                        "suggestion": suggestion.to_dict(),
+                        "error": str(exc),
+                    }
+                )
+
+        return {
+            "page_id": exported.page_id,
+            "title": exported.title,
+            "language": language,
+            "created_count": len(created_comments),
+            "failed_count": len(failed_comments),
+            "created_comments": created_comments,
+            "failed_comments": failed_comments,
+            "truncated": result.truncated,
+        }
     finally:
         client.close()
 
