@@ -13,6 +13,7 @@ from .storage_normalizer import attr_value, element_text_content, local_name, na
 _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
 _TABLE_MODES = {"auto", "markdown", "html"}
+_UNSAFE_HTML_TAGS = {"script", "style", "iframe", "object", "embed"}
 
 
 class StorageMarkdownRenderer:
@@ -76,6 +77,10 @@ class StorageMarkdownRenderer:
     def _render_block(self, element: ET.Element, list_depth: int) -> List[str]:
         name = local_name(element.tag)
         ns = namespace_uri(element.tag)
+
+        if name in _UNSAFE_HTML_TAGS:
+            self._warn(f"HTML-тег {name} был пропущен при экспорте как небезопасный.")
+            return []
 
         if ns == _AC_URI and name == "structured-macro":
             rendered = self._render_macro(element)
@@ -143,6 +148,10 @@ class StorageMarkdownRenderer:
                 return result.markdown
 
         macro_name = self._macro_name(element)
+
+        if macro_name in {"html", "html-include"}:
+            self._warn(f"Макрос {macro_name} был пропущен при экспорте как небезопасный HTML.")
+            return ""
 
         if macro_name == "markdown":
             body = self._macro_plain_text_body(element)
@@ -445,6 +454,10 @@ class StorageMarkdownRenderer:
         name = local_name(element.tag)
         ns = namespace_uri(element.tag)
 
+        if name in _UNSAFE_HTML_TAGS:
+            self._warn(f"HTML-тег {name} был пропущен при экспорте как небезопасный.")
+            return ""
+
         if ns == _AC_URI and name == "structured-macro":
             return self._render_macro_as_html(element)
         if ns == _AC_URI and name == "link":
@@ -493,6 +506,10 @@ class StorageMarkdownRenderer:
 
     def _render_macro_as_html(self, element: ET.Element) -> str:
         macro_name = self._macro_name(element)
+        if macro_name in {"html", "html-include"}:
+            self._warn(f"Макрос {macro_name} был пропущен при экспорте как небезопасный HTML.")
+            return ""
+
         if macro_name == "status":
             title = html.escape(self._macro_parameter(element, "title").strip())
             colour = html.escape(self._macro_parameter(element, "colour").strip(), quote=True)
@@ -595,6 +612,10 @@ class StorageMarkdownRenderer:
     def _render_inline_element(self, element: ET.Element) -> str:
         name = local_name(element.tag)
         ns = namespace_uri(element.tag)
+
+        if name in _UNSAFE_HTML_TAGS:
+            self._warn(f"HTML-тег {name} был пропущен при экспорте как небезопасный.")
+            return ""
 
         for extension in self._registry.extensions:
             result = extension.render_inline_element(self, element)
