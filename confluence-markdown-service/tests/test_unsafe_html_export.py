@@ -36,6 +36,34 @@ class UnsafeHtmlExportTests(unittest.TestCase):
         self.assertEqual(markdown, "Полезный текст")
         self.assertIn("HTML-тег script был пропущен", renderer.warnings[0])
 
+    def test_sanitizes_embedded_html_from_unknown_plain_text_macro(self) -> None:
+        markdown, renderer = self._render(
+            '<ac:structured-macro ac:name="custom-html-widget">'
+            "<ac:plain-text-body><![CDATA["
+            '<div class="widget">Полезный текст</div>'
+            '<script>window.secret = true</script>'
+            '<style>.hidden { display: none; }</style>'
+            "]]></ac:plain-text-body>"
+            "</ac:structured-macro>"
+        )
+
+        self.assertEqual(markdown, "Полезный текст")
+        self.assertNotIn("<div", markdown)
+        self.assertNotIn("<script", markdown)
+        self.assertNotIn("window.secret", markdown)
+        self.assertNotIn("<style", markdown)
+        self.assertIn("HTML-фрагмент внутри текста был очищен при экспорте.", renderer.warnings)
+
+    def test_sanitizes_escaped_html_text(self) -> None:
+        markdown, renderer = self._render(
+            "<p>&lt;div&gt;Текст&lt;/div&gt;&lt;script&gt;alert(1)&lt;/script&gt;</p>"
+        )
+
+        self.assertEqual(markdown, "Текст")
+        self.assertNotIn("&lt;div", markdown)
+        self.assertNotIn("&lt;script", markdown)
+        self.assertIn("HTML-фрагмент внутри текста был очищен при экспорте.", renderer.warnings)
+
 
 if __name__ == "__main__":
     unittest.main()

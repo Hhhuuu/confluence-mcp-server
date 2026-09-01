@@ -14,6 +14,18 @@ _AC_URI = "urn:ac"
 _RI_URI = "urn:ri"
 _TABLE_MODES = {"auto", "markdown", "html"}
 _UNSAFE_HTML_TAGS = {"script", "style", "iframe", "object", "embed"}
+_EMBEDDED_SCRIPT_STYLE_PATTERN = re.compile(
+    r"<\s*(script|style)\b[^>]*>.*?<\s*/\s*\1\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_EMBEDDED_UNSAFE_TAG_PATTERN = re.compile(
+    r"<\s*/?\s*(script|style|iframe|object|embed)\b[^>]*>",
+    re.IGNORECASE,
+)
+_EMBEDDED_HTML_TAG_PATTERN = re.compile(
+    r"</?\s*[A-Za-z][A-Za-z0-9:-]*(?:\s+[^<>]*)?/?>",
+    re.DOTALL,
+)
 
 
 class StorageMarkdownRenderer:
@@ -157,7 +169,7 @@ class StorageMarkdownRenderer:
             body = self._macro_plain_text_body(element)
             if body:
                 self._warn("Макрос markdown был выгружен как обычный markdown-текст.")
-                return body.strip()
+                return self._sanitize_embedded_html_text(body).strip()
 
         if macro_name == "code":
             language = self._macro_parameter(element, "language") or ""
@@ -186,12 +198,12 @@ class StorageMarkdownRenderer:
         plain_text = self._macro_plain_text_body(element)
         if plain_text:
             self._warn(f"Макрос {macro_name} был упрощен до plain-text содержимого.")
-            return plain_text.strip()
+            return self._sanitize_embedded_html_text(plain_text).strip()
 
         rich_text = self._macro_rich_text_body(element)
         if rich_text:
             self._warn(f"Макрос {macro_name} был упрощен до текстового содержимого.")
-            return rich_text
+            return self._sanitize_embedded_html_text(rich_text)
 
         fallback_text = self._fallback_element_text(element)
         if fallback_text:
@@ -441,12 +453,12 @@ class StorageMarkdownRenderer:
     def _render_table_cell_content_as_html(self, cell: ET.Element) -> str:
         fragments: list[str] = []
         if cell.text and cell.text.strip():
-            fragments.append(html.escape(self._normalize_inline_text(cell.text)))
+            fragments.append(html.escape(self._sanitize_embedded_html_text(cell.text)))
 
         for child in cell:
             fragments.append(self._render_element_as_html(child))
             if child.tail and child.tail.strip():
-                fragments.append(html.escape(self._normalize_inline_text(child.tail)))
+                fragments.append(html.escape(self._sanitize_embedded_html_text(child.tail)))
 
         return "".join(fragment for fragment in fragments if fragment)
 
@@ -533,10 +545,10 @@ class StorageMarkdownRenderer:
 
         rich_text = self._macro_rich_text_body(element)
         if rich_text:
-            return f"<div>{html.escape(rich_text)}</div>"
+            return f"<p>{html.escape(self._sanitize_embedded_html_text(rich_text))}</p>"
         plain_text = self._macro_plain_text_body(element)
         if plain_text:
-            return html.escape(plain_text)
+            return html.escape(self._sanitize_embedded_html_text(plain_text))
         return html.escape(self._fallback_element_text(element))
 
     def _render_confluence_link_as_html(self, element: ET.Element) -> str:
@@ -600,12 +612,12 @@ class StorageMarkdownRenderer:
         fragments: List[str] = []
 
         if element.text:
-            fragments.append(self._normalize_inline_text(element.text))
+            fragments.append(self._sanitize_embedded_html_text(element.text))
 
         for child in element:
             fragments.append(self._render_inline_element(child))
             if child.tail:
-                fragments.append(self._normalize_inline_text(child.tail))
+                fragments.append(self._sanitize_embedded_html_text(child.tail))
 
         return self._normalize_inline_text("".join(fragments))
 
@@ -785,7 +797,30 @@ class StorageMarkdownRenderer:
         """
 
         text = self._normalize_inline_text(element_text_content(element))
-        return text.strip()
+        return self._sanitize_embedded_html_text(text).strip()
+
+    def _sanitize_embedded_html_text(self, text: str) -> str:
+        """
+        Убрать HTML, который попал в storage как текст/CDATA, а не как XML-узлы.
+
+        Такое встречается в HTML-макросах и некоторых кастомных макросах:
+        `<script>` там уже не XML-элемент, поэтому фильтр по tag name его не видит.
+        """
+
+        normalized = self._normalize_inline_text(text)
+        if not normalized:
+            return ""
+
+        unescaped = html.unescape(normalized)
+        if not _EMBEDDED_HTML_TAG_PATTERN.search(unescaped):
+            return normalized
+
+        without_scripts = _EMBEDDED_SCRIPT_STYLE_PATTERN.sub("", unescaped)
+        without_unsafe_tags = _EMBEDDED_UNSAFE_TAG_PATTERN.sub("", without_scripts)
+        without_tags = _EMBEDDED_HTML_TAG_PATTERN.sub(" ", without_unsafe_tags)
+        cleaned = self._normalize_inline_text(without_tags).strip()
+        self._warn("HTML-фрагмент внутри текста был очищен при экспорте.")
+        return cleaned
 
     @staticmethod
     def _normalize_inline_text(text: str) -> str:
