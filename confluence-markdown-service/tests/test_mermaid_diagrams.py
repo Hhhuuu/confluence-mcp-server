@@ -19,14 +19,30 @@ flowchart LR
 ```
 """
 
+MERMAID_ER_DIAGRAM = """```mermaid {title="database-schema"}
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER {
+        int id PK
+        string name
+    }
+    ORDER {
+        int id PK
+        int customer_id FK
+    }
+```
+"""
+
 
 class FakeMermaidClient:
     def __init__(self) -> None:
         self.updated_storage = ""
         self.uploaded_content = ""
         self.uploaded_content_type = ""
+        self.events: list[str] = []
 
     def create_child_page(self, **kwargs) -> PageData:
+        self.events.append("create_page")
         self.updated_storage = kwargs["content"]
         return PageData(title=kwargs["title"], page_id="100", page_url="https://example/100")
 
@@ -47,6 +63,7 @@ class FakeMermaidClient:
         )
 
     def update_page(self, **kwargs) -> PageData:
+        self.events.append("update_page")
         self.updated_storage = kwargs["content"]
         return PageData(title=kwargs["title"], page_id=kwargs["page_id"], page_url="https://example/100")
 
@@ -57,6 +74,7 @@ class FakeMermaidClient:
         comment: str,
         content_type: str | None = None,
     ):
+        self.events.append("upload_attachment")
         self.uploaded_content = Path(file_path).read_text(encoding="utf-8")
         self.uploaded_content_type = content_type or ""
         return "updated", AttachmentSummary(id="att-1", title=Path(file_path).name)
@@ -98,6 +116,30 @@ class MermaidImportTests(unittest.TestCase):
         self.assertEqual(client.uploaded_content, "flowchart LR\n    A --> B\n")
         self.assertEqual(client.uploaded_content_type, "text/plain")
         self.assertEqual(result.attachments[0].filename, "mermaid-diagram-1.mmd")
+        self.assertEqual(client.events, ["upload_attachment", "update_page"])
+
+    def test_create_refreshes_er_diagram_after_attachment_upload(self) -> None:
+        client = FakeMermaidClient()
+        importer = ConfluenceMarkdownImporter(
+            client,  # type: ignore[arg-type]
+            builtin_extension_options={"mermaid_diagrams": {"enabled": True}},
+        )
+
+        result = importer.create_page_from_markdown(
+            title="Database schema",
+            markdown_text=MERMAID_ER_DIAGRAM,
+            parent_id="10",
+            space_key="DOC",
+        )
+
+        self.assertEqual(
+            client.events,
+            ["create_page", "upload_attachment", "update_page"],
+        )
+        self.assertIn('ac:name="mermaid-cloud"', client.updated_storage)
+        self.assertIn('ac:name="filename">database-schema.mmd', client.updated_storage)
+        self.assertIn("erDiagram", client.uploaded_content)
+        self.assertEqual(result.attachments[0].filename, "database-schema.mmd")
 
 
 class FakeMermaidExportClient:

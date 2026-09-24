@@ -147,6 +147,17 @@ class ConfluenceMarkdownImporter:
             content=preview.storage,
         )
         generated_attachments = self._upload_generated_mermaid_attachments(page.page_id)
+        if generated_attachments:
+            # The Mermaid macro resolves its source attachment while the page is
+            # saved. Refresh the page after upload so a newly created diagram is
+            # not cached as an empty macro.
+            page = self._client.update_page(
+                title=page.title,
+                space_key=space_key,
+                page_id=page.page_id,
+                version_number=2,
+                content=preview.storage,
+            )
         return MarkdownPublishResult(
             title=page.title,
             page_id=page.page_id,
@@ -203,6 +214,7 @@ class ConfluenceMarkdownImporter:
             markdown_text,
             attachment_page_id=page_id,
         )
+        generated_attachments = self._upload_generated_mermaid_attachments(page.id)
         next_version = page.version.number + 1
         page_data = self._client.update_page(
             title=title or page.title,
@@ -211,7 +223,6 @@ class ConfluenceMarkdownImporter:
             version_number=next_version,
             content=preview.storage,
         )
-        generated_attachments = self._upload_generated_mermaid_attachments(page.id)
         return MarkdownPublishResult(
             title=page_data.title,
             page_id=page_data.page_id,

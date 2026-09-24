@@ -17,10 +17,12 @@ from .toc import TocExtension
 _BUILTIN_EXTENSION_TYPES = {
     TocExtension.name: TocExtension,
     AdmonitionsExtension.name: AdmonitionsExtension,
+    # Mermaid must preprocess titled fences before the generic code-block
+    # extension, otherwise ` ```mermaid {title="..."} ` becomes a code macro.
+    MermaidDiagramsExtension.name: MermaidDiagramsExtension,
     CodeBlocksExtension.name: CodeBlocksExtension,
     DateElementExtension.name: DateElementExtension,
     JiraLinksExtension.name: JiraLinksExtension,
-    MermaidDiagramsExtension.name: MermaidDiagramsExtension,
     StatusElementExtension.name: StatusElementExtension,
 }
 
