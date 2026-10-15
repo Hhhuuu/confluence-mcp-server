@@ -17,6 +17,7 @@ from .registry import (
     list_builtin_markdown_extensions,
 )
 from .status_element import StatusElementExtension
+from .table_excerpts import TableExcerptsExtension
 from .toc import TocExtension
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "MarkdownImportTransformResult",
     "MarkdownRenderResult",
     "StatusElementExtension",
+    "TableExcerptsExtension",
     "TocExtension",
     "build_markdown_extension_registry",
     "list_builtin_markdown_extensions",

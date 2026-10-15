@@ -12,6 +12,7 @@ from .date_element import DateElementExtension
 from .jira_links import JiraLinksExtension
 from .mermaid_diagrams import MermaidDiagramsExtension
 from .status_element import StatusElementExtension
+from .table_excerpts import TableExcerptsExtension
 from .toc import TocExtension
 
 _BUILTIN_EXTENSION_TYPES = {
@@ -24,6 +25,7 @@ _BUILTIN_EXTENSION_TYPES = {
     DateElementExtension.name: DateElementExtension,
     JiraLinksExtension.name: JiraLinksExtension,
     StatusElementExtension.name: StatusElementExtension,
+    TableExcerptsExtension.name: TableExcerptsExtension,
 }
 
 _DEFAULT_BUILTIN_EXTENSION_NAMES = list(_BUILTIN_EXTENSION_TYPES.keys())

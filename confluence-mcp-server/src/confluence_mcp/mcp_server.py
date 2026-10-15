@@ -599,8 +599,10 @@ def _jira_builtin_options() -> dict[str, str]:
 def _builtin_extension_options() -> dict:
     jira_options = _jira_builtin_options()
     config = load_app_config(resolve_config_path())
+    server_deployment = config.confluence.deployment == "server"
     options: dict = {
-        "mermaid_diagrams": {"enabled": config.confluence.deployment == "server"}
+        "mermaid_diagrams": {"enabled": server_deployment},
+        "table_excerpts": {"enabled": server_deployment},
     }
     if jira_options:
         options["jira_links"] = jira_options

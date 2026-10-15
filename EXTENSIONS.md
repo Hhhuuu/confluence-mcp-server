@@ -197,6 +197,109 @@ sequenceDiagram
 Расширение автоматически включается только при `deployment: server`.
 Для Cloud этот attachment-based формат не применяется.
 
+### 8. `table_excerpts`
+
+Назначение:
+
+- поддержка Server/Data Center-макросов **Table Excerpt** и
+  **Table Excerpt Include** из приложения Stiltsoft
+  **Table Filter, Charts & Spreadsheets for Confluence**
+- повторное использование таблиц на одной или разных страницах
+- объединение таблиц с одинаковыми колонками в сводную таблицу
+- обратимое преобразование `Markdown -> Confluence -> Markdown`
+
+Расширение автоматически включается только при `deployment: server`.
+
+#### Исходная таблица
+
+```md
+<table-excerpt name="project-status">
+
+| Project | Owner | Status |
+| --- | --- | --- |
+| Alpha | Ivan | Active |
+
+</table-excerpt>
+```
+
+Будет создан macro `table-excerpt` с параметром `name=project-status`.
+Внутри блока можно использовать не только простую Markdown-таблицу, но и другое
+содержимое, которое поддерживает Markdown Bridge.
+
+#### Вставка таблицы с текущей страницы
+
+```md
+<table-excerpt-include
+  name="project-status"
+  source="current"
+  show-source="true"
+/>
+```
+
+Соответствие параметров:
+
+| Markdown | Confluence storage parameter |
+| --- | --- |
+| `name` | `name` |
+| `source` | `excerptSource` |
+| `source-type` | `type` |
+| `show-source` | `copytable` |
+| `report` | `merge-tables` |
+| `transpose` | `transpose` |
+| `page` | структурированный `page` с `ri:page` |
+
+#### Сводная таблица с другой страницы
+
+```md
+<table-excerpt-include
+  name="project-status"
+  source-type="page"
+  page="DOC:Projects"
+  report="true"
+  transpose="auto"
+  param-v="2"
+/>
+```
+
+`report="true"` включает режим сводной таблицы
+(`merge-tables=true`). Все найденные Table Excerpt с одинаковым именем и
+совместимыми колонками объединяются в одну таблицу.
+
+Параметры `source` и `source-type` оставлены раздельными намеренно:
+у разных версий приложения встречаются storage-параметры `excerptSource` и
+`type`. Используй вариант, который создаёт редактор вашей версии Confluence.
+
+#### Дополнительные параметры установленной версии
+
+Любой текстовый storage-параметр можно передать без отдельной доработки:
+
+```md
+<table-excerpt-include
+  name="project-status"
+  param-type="page"
+  param-merge-tables="true"
+  param-v="2"
+/>
+```
+
+Префикс `param-` удаляется, а оставшееся имя записывается как точное имя
+`ac:parameter`. При экспорте неизвестные текстовые параметры возвращаются в
+том же виде. Неизвестные параметры со вложенным XML выгружаются как
+`xml-param-*` с Base64-значением и также восстанавливаются при повторной
+публикации.
+
+Чтобы узнать точные параметры своей версии:
+
+1. Настрой macro через редактор Confluence и сохрани страницу.
+2. Выгрузи страницу через `GET /api/v1/page/{page_id}/markdown` или MCP tool
+   `export_page_to_markdown`.
+3. Используй полученный блок `table-excerpt-include` как шаблон.
+4. Меняй дружелюбные атрибуты и `param-*`, не редактируя
+   `xml-param-*` вручную.
+
+Описание поведения макросов:
+[Stiltsoft Table Excerpt and Table Excerpt Include](https://docs.stiltsoft.com/tfac/dc-server/how-to-use-table-excerpt-and-table-excerpt-include-macros-42241623.html).
+
 ## Как управлять расширениями
 
 По умолчанию уже включены все встроенные расширения:
@@ -208,6 +311,7 @@ sequenceDiagram
 - `jira_links`
 - `status_element`
 - `mermaid_diagrams` (только `deployment: server`)
+- `table_excerpts` (только `deployment: server`)
 
 Если этого достаточно, `enabled_extensions` можно вообще не передавать.
 

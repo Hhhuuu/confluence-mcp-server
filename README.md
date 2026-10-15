@@ -13,6 +13,8 @@
 - `EXTENSIONS.md` — система markdown-расширений, встроенные плагины и инструкция по добавлению своих
 - `KNOWLEDGE_MODEL.md` — модель знаний проекта для анализа, поиска и автоматизации
 - `RAG_ARCHITECTURE.md` — проектная схема индексации и retrieval для RAG
+- `examples/gitlab-ci-publish-by-title` — публикация Markdown из GitLab CI по пространству и заголовку страницы без запуска MCP
+- `examples/table-excerpts.md` — две именованные таблицы и их агрегация через Table Excerpt Include
 
 ## Структура
 
