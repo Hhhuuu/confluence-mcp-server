@@ -187,8 +187,10 @@ sequenceDiagram
 Что делает:
 
 - Markdown -> Confluence Server/Data Center:
-  - создаёт plain-text attachment `.mmd` с исходником Mermaid
-  - добавляет macro `mermaid-cloud` с параметрами `filename`, `revision` и `toolbar`
+  - создаёт plain-text attachment без расширения с исходником Mermaid, как требует
+    REST-контракт Stratus Add-ons
+  - добавляет macro `mermaid-cloud` с параметрами `filename`, `revision`, `format`,
+    `zoom` и `toolbar`
   - при обновлении версионирует attachment и увеличивает `revision`
 - Confluence -> Markdown:
   - скачивает исходный attachment

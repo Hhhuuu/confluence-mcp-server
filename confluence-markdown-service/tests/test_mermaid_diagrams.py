@@ -39,6 +39,7 @@ class FakeMermaidClient:
         self.updated_storage = ""
         self.uploaded_content = ""
         self.uploaded_content_type = ""
+        self.uploaded_filename = ""
         self.events: list[str] = []
 
     def create_child_page(self, **kwargs) -> PageData:
@@ -77,6 +78,7 @@ class FakeMermaidClient:
         self.events.append("upload_attachment")
         self.uploaded_content = Path(file_path).read_text(encoding="utf-8")
         self.uploaded_content_type = content_type or ""
+        self.uploaded_filename = Path(file_path).name
         return "updated", AttachmentSummary(id="att-1", title=Path(file_path).name)
 
 
@@ -90,8 +92,22 @@ class MermaidImportTests(unittest.TestCase):
         result = importer.preview_markdown_to_storage(MERMAID_MARKDOWN)
 
         self.assertIn('ac:name="mermaid-cloud"', result.storage)
-        self.assertIn('ac:name="filename">mermaid-diagram-1.mmd', result.storage)
+        self.assertIn('ac:name="filename">mermaid-diagram-1', result.storage)
+        self.assertIn('ac:name="format">svg', result.storage)
         self.assertIn('ac:name="revision">1', result.storage)
+
+    def test_title_uses_plugin_compatible_attachment_basename(self) -> None:
+        importer = ConfluenceMarkdownImporter(
+            None,  # type: ignore[arg-type]
+            builtin_extension_options={"mermaid_diagrams": {"enabled": True}},
+        )
+
+        result = importer.preview_markdown_to_storage(
+            MERMAID_ER_DIAGRAM.replace('title="database-schema"', 'title="database.schema.mmd"')
+        )
+
+        self.assertIn('ac:name="filename">database', result.storage)
+        self.assertNotIn("database.schema.mmd", result.storage)
 
     def test_cloud_does_not_create_mermaid_cloud_macro(self) -> None:
         importer = ConfluenceMarkdownImporter(
@@ -115,7 +131,8 @@ class MermaidImportTests(unittest.TestCase):
         self.assertIn('ac:name="revision">3', client.updated_storage)
         self.assertEqual(client.uploaded_content, "flowchart LR\n    A --> B\n")
         self.assertEqual(client.uploaded_content_type, "text/plain")
-        self.assertEqual(result.attachments[0].filename, "mermaid-diagram-1.mmd")
+        self.assertEqual(client.uploaded_filename, "mermaid-diagram-1")
+        self.assertEqual(result.attachments[0].filename, "mermaid-diagram-1")
         self.assertEqual(client.events, ["upload_attachment", "update_page"])
 
     def test_create_refreshes_er_diagram_after_attachment_upload(self) -> None:
@@ -137,16 +154,16 @@ class MermaidImportTests(unittest.TestCase):
             ["create_page", "upload_attachment", "update_page"],
         )
         self.assertIn('ac:name="mermaid-cloud"', client.updated_storage)
-        self.assertIn('ac:name="filename">database-schema.mmd', client.updated_storage)
+        self.assertIn('ac:name="filename">database-schema', client.updated_storage)
         self.assertIn("erDiagram", client.uploaded_content)
-        self.assertEqual(result.attachments[0].filename, "database-schema.mmd")
+        self.assertEqual(result.attachments[0].filename, "database-schema")
 
 
 class FakeMermaidExportClient:
     def find_page_by_id_with_storage(self, page_id: str) -> PageSummary:
         storage = (
             '<ac:structured-macro ac:name="mermaid-cloud">'
-            '<ac:parameter ac:name="filename">diagram.mmd</ac:parameter>'
+            '<ac:parameter ac:name="filename">diagram</ac:parameter>'
             '<ac:parameter ac:name="revision">2</ac:parameter>'
             '</ac:structured-macro>'
         )

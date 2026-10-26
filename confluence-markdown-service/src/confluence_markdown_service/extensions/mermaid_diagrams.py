@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 import html
-from pathlib import Path
 import re
 from uuid import uuid4
 from xml.etree import ElementTree as ET
@@ -20,11 +19,12 @@ _AC_URI = "urn:ac"
 _MERMAID_FENCE_RE = re.compile(
     r'^```mermaid(?:\s+\{title="(?P<title>[^"]+)"\})?\s*$'
 )
+_INVALID_ATTACHMENT_NAME_RE = re.compile(r'[&*+=\\;/{}|":<>?.]')
 
 
 @dataclass(frozen=True)
 class GeneratedMermaidAttachment:
-    """Сгенерированный текстовый attachment с исходником Mermaid."""
+    """Сгенерированный source attachment с исходником Mermaid."""
 
     filename: str
     content: str
@@ -117,6 +117,7 @@ class MermaidDiagramsExtension(ConfluenceMarkdownExtension):
         self._append_parameter(macro, "filename", filename)
         self._append_parameter(macro, "toolbar", "bottom")
         self._append_parameter(macro, "zoom", "fit")
+        self._append_parameter(macro, "format", "svg")
         self._append_parameter(macro, "revision", str(self._revisions.get(filename, 1)))
         return MarkdownImportTransformResult(handled=True, replacement=macro)
 
@@ -139,9 +140,18 @@ class MermaidDiagramsExtension(ConfluenceMarkdownExtension):
     @staticmethod
     def _attachment_filename(title: str, index: int) -> str:
         if not title:
-            return f"mermaid-diagram-{index}.mmd"
-        safe_title = Path(title).name.strip().replace("/", "-").replace("\\", "-")
-        return safe_title if safe_title.lower().endswith(".mmd") else f"{safe_title}.mmd"
+            return f"mermaid-diagram-{index}"
+
+        # The Stratus editor strips everything from the first dot before it
+        # calls its update endpoint. Store the source with that exact basename
+        # so diagrams created here remain editable in Confluence.
+        basename = title.strip().replace("\\", "/").rsplit("/", 1)[-1]
+        basename = re.sub(r"\..+$", "", basename)
+        safe_title = _INVALID_ATTACHMENT_NAME_RE.sub("-", basename)
+        safe_title = re.sub(r"-{2,}", "-", safe_title).strip(" -")
+        if len(safe_title) < 3:
+            return f"mermaid-diagram-{index}"
+        return safe_title
 
     @staticmethod
     def _append_parameter(macro: ET.Element, name: str, value: str) -> None:
