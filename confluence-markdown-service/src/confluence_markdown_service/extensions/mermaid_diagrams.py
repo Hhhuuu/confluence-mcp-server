@@ -20,6 +20,10 @@ _MERMAID_FENCE_RE = re.compile(
     r'^```mermaid(?:\s+\{title="(?P<title>[^"]+)"\})?\s*$'
 )
 _INVALID_ATTACHMENT_NAME_RE = re.compile(r'[&*+=\\;/{}|":<>?.]')
+_TRANSPARENT_PNG_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUB"
+    "AScY42YAAAAASUVORK5CYII="
+)
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,34 @@ class GeneratedMermaidAttachment:
 
     filename: str
     content: str
+
+    @property
+    def svg_filename(self) -> str:
+        return f"{self.filename}.svg"
+
+    @property
+    def png_filename(self) -> str:
+        return f"{self.filename}.png"
+
+    def fallback_svg(self) -> str:
+        """Создать видимое SVG-превью до первого сохранения в редакторе."""
+
+        safe_filename = html.escape(self.filename)
+        return (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="96" '
+            'viewBox="0 0 640 96" role="img">'
+            '<rect width="640" height="96" rx="4" fill="#f4f5f7"/>'
+            '<text x="24" y="40" font-family="Arial, sans-serif" font-size="18" '
+            'fill="#172b4d">Mermaid diagram</text>'
+            f'<text x="24" y="68" font-family="Arial, sans-serif" font-size="14" '
+            f'fill="#5e6c84">{safe_filename}</text>'
+            "</svg>\n"
+        )
+
+    def fallback_png(self) -> bytes:
+        """Создать валидный PNG, требуемый REST-контрактом плагина."""
+
+        return base64.b64decode(_TRANSPARENT_PNG_BASE64)
 
 
 class MermaidDiagramsExtension(ConfluenceMarkdownExtension):

@@ -538,6 +538,41 @@ class ConfluenceMarkdownImporter:
                         action=action,
                     )
                 )
+
+                fallback_assets = (
+                    (
+                        generated.svg_filename,
+                        generated.fallback_svg().encode("utf-8"),
+                        "image/svg+xml",
+                    ),
+                    (
+                        generated.png_filename,
+                        generated.fallback_png(),
+                        "image/png",
+                    ),
+                )
+                for filename, content, content_type in fallback_assets:
+                    if (
+                        self._client.find_attachment_by_filename(page_id, filename)
+                        is not None
+                    ):
+                        continue
+                    asset_path = directory_path / filename
+                    asset_path.write_bytes(content)
+                    asset_action, asset = self._client.upsert_attachment(
+                        page_id=page_id,
+                        file_path=asset_path,
+                        comment="Mermaid Diagrams for Confluence compatibility asset",
+                        content_type=content_type,
+                    )
+                    uploaded.append(
+                        MarkdownAttachmentResult(
+                            filename=filename,
+                            source_path="<generated:mermaid-fallback>",
+                            attachment_id=asset.id,
+                            action=asset_action,
+                        )
+                    )
         return uploaded
 
     def _mermaid_extension(self):

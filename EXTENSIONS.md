@@ -189,6 +189,9 @@ sequenceDiagram
 - Markdown -> Confluence Server/Data Center:
   - создаёт plain-text attachment без расширения с исходником Mermaid, как требует
     REST-контракт Stratus Add-ons
+  - при первой публикации создаёт недостающие `<name>.svg` и `<name>.png`, без
+    которых редактор плагина не может сохранить диаграмму; существующие превью
+    плагина не перезаписываются
   - добавляет macro `mermaid-cloud` с параметрами `filename`, `revision`, `format`,
     `zoom` и `toolbar`
   - при обновлении версионирует attachment и увеличивает `revision`
